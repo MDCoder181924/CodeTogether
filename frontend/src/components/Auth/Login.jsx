@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-
+  const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -54,11 +54,20 @@ const Login = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#8c909f] group-focus-within:text-[#adc6ff] transition-colors">lock</span>
                 <input 
-                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-4 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50" 
+                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-12 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50" 
                   placeholder="••••••••" 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0 m-0 text-[#8c909f] hover:text-[#adc6ff] transition-colors focus:outline-none"
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
               </div>
             </div>
 
@@ -87,8 +96,8 @@ const Login = () => {
               Google
             </button>
             <button className="bg-white/5 border border-white/10 py-2 flex items-center justify-center gap-2 rounded-lg text-xs uppercase tracking-widest font-semibold text-[#e5e1e4] hover:bg-white/10 transition-all active:scale-95">
-              <span className="material-symbols-outlined text-[20px]">cloud</span>
-              SSO
+              <img alt="GitHub" className="w-5 h-5 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />
+              GitHub
             </button>
           </div>
 

@@ -1,0 +1,56 @@
+# dependencies
+node_modules/
+
+# environment variables
+.env
+
+# logs
+logs
+*.log
+npm-debug.log*
+
+# runtime files
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# coverage
+coverage/
+
+# build folders
+dist/
+build/
+
+# uploads
+public/uploads/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# temporary files
+.tmp/
+.temp/
+
+# cache
+.cache/
+
+# package lock optional
+# package-lock.json
+
+# yarn
+.yarn/
+
+# pnpm
+.pnpm-store/
+
+# dotenv
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
