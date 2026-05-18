@@ -1,27 +1,16 @@
-import express from 'express'
-import { createServer } from 'http'
-import { Server } from 'socket.io'
-import { YSocketIO } from 'y-socket.io/dist/server'
+import dotenv from 'dotenv';
+dotenv.config();
 
-const app = express()
-app.use(express.static('public'))
-const httpServer = createServer(app)
+import app from './src/app.js';
+import http from "http";
 
-const io = new Server(httpServer, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
-})
+import connectDB from './src/config/db.js';
+connectDB();
 
-const ysocket = new YSocketIO(io)
+const server = http.createServer(app);
 
-ysocket.initialize()
+const PORT = process.env.PORT || 3000;
 
-app.get('/test', (req, res) => {
-  res.send('Hello from test route!')
-})
-
-httpServer.listen(3000, () => {
-  console.log('Server running at http://localhost:3000')
+server.listen(PORT , ()=> {
+    console.log(`Server is running on port http://localhost:${PORT}`);
 })
