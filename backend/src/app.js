@@ -5,13 +5,15 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 
 import userRouter from './routes/User/userRoutes.js';
+import passport from './config/passport.js';
+import authRouter from './routes/Auth/authRoutes.js';
 
 const app = express();
 
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(express.json());
-
+app.use(passport.initialize());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
@@ -22,8 +24,9 @@ app.use(cors({
 }));
 
 
-app.user("/api/user" , userRouter);
+app.use("/api/user" , userRouter);
 
+app.use("/api/auth", authRouter);
 
 app.get('/', (req, res) => {
     res.status(200).json({

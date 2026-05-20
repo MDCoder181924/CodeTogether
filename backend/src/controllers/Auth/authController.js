@@ -31,6 +31,8 @@ export const registerUser = async (req , res)=>{
          password: hashedPassword,
       });
 
+      newUser.password = undefined;
+
       res.status(201).json({
          success: true,
          message: "User registered successfully",
@@ -90,6 +92,8 @@ export const LoginUser = async ( req , res ) => {
             sameSite: "strict",
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
+
+        user.password = undefined;
 
         res.status(200).json({
             success: true,
