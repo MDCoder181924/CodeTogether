@@ -1,5 +1,6 @@
 import User from "../../models/Auth/User.js";
 import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 import { generateAccessToken , generateRefreshToken } from "../../services/Auth/sessionService.js";
 
 export const registerUser = async (req , res)=>{
@@ -45,7 +46,7 @@ export const registerUser = async (req , res)=>{
     }
 }
 
-export const LoginUsr = async ( req , res ) => {
+export const LoginUser = async ( req , res ) => {
     try{
         const { email , password } = req.body;
         
@@ -73,13 +74,13 @@ export const LoginUsr = async ( req , res ) => {
             });
         }
 
-        const accesstoken = generateAccessToken(user._id);
-        const refreshtoken = generateRefreshToken(user._id);
+        const accesstoken = generateAccessToken(user);
+        const refreshtoken = generateRefreshToken(user);
 
-        res.cookis("accessToken" , accesstoken ,{
+        res.cookie("accessToken" , accesstoken ,{
             httpOnly:true,
             secure: false,
-            sameSite:"string",
+            sameSite:"strict",
             maxAge: 15*60*1000,
         })
 
@@ -104,5 +105,62 @@ export const LoginUsr = async ( req , res ) => {
             success: false,
             message: error.message,
         });
+    }
+}
+
+
+export const LogoutUser = async (req ,res)=>{
+    try{
+        res.clearCookie("accessToken");
+        res.clearCookie
+        ("refreshToken");
+
+        res.status(200).json({
+            success: true,
+            message : "User logged out successfully",
+        })
+
+    }catch(error){
+        res.status(500).json({
+            success : false,
+            message: error.message,
+        })
+    }
+}
+
+
+export const refreshAccessToken = async(req , res)=>{
+    try{
+
+        const refreshToken = req.cookies.refreshToken;
+
+        if(!refreshToken){
+            return res.status(401).json({
+                success:false,
+                message:"Refresh token not found",
+            })
+        }
+
+        const decoded = jwt.verify(refreshToken , process.env.REFRESH_TOKEN_SECRET);
+
+        const newAccessToken = generateAccessToken(decoded.userId);
+
+
+        res.cookie("accessToken" , newAccessToken , {
+            httpOnly: true,
+            secure: false,
+            sameSite: "strict",
+            maxAge: 15*60*1000,
+        })
+
+        res.status(200).json({
+            success:true,
+            accessToken: newAccessToken,
+        })
+    }catch(error){
+        res.status(401).json({
+            success:false,
+            message:"Invalid refresh token",
+        })
     }
 }
