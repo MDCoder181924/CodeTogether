@@ -1,12 +1,24 @@
 import React, { useState } from 'react';
 import { Link , useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const handleSubmit = (e) => {
+  const [email , setEmail] = useState("");
+  const [password ,setPassword] = useState("");
+  const [name , setName] = useState("");
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    navigate('/group-lobby');
+    try{
+      const response = await api.post('/auth/register',{name , email , password})
+      console.log(response.data);
+      navigate('/group-lobby');
+    }
+    catch(error){
+      console.error("Signup failed:", error);
+    }
   }
 
 
@@ -40,6 +52,8 @@ const Signup = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">person</span>
                 <input 
+                  value={name}
+                  onChange={(e)=>setName(e.target.value)}
                   className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
                   id="full_name" 
                   placeholder="Linus Torvalds" 
@@ -55,6 +69,8 @@ const Signup = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">alternate_email</span>
                 <input 
+                  value={email}
+                  onChange={(e)=>setEmail(e.target.value)}
                   className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
                   id="email" 
                   placeholder="dev@codetogether.io" 
@@ -70,6 +86,8 @@ const Signup = () => {
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">lock</span>
                 <input 
+                  value={password}
+                  onChange={(e)=>setPassword(e.target.value)}
                   className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-12 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
                   id="password" 
                   placeholder="••••••••••••" 
@@ -93,19 +111,25 @@ const Signup = () => {
 
             {/* Sign Up Button */}
             <button className="mt-2 w-full bg-[#adc6ff] py-4 rounded-lg text-2xl text-[#002e6a] font-bold shadow-[0_0_20px_rgba(173,198,255,0.3)] hover:shadow-[0_0_30px_rgba(173,198,255,0.5)] active:scale-[0.98] transition-all duration-200" type="submit">
-              <Link to={"/group-lobby"} className="form-control">
-                Sign Up
-              </Link>
+              Sign Up
             </button>
           </form>
 
           {/* Social/Alt Signups */}
           <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
-            <button className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+            <button 
+            onClick={()=>{
+              window.location.href = 'http://localhost:3000/api/auth/google';
+            }}
+            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
               <img alt="Google" className="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTcWPwho4E0zjJ8rp5DHpkLgy1p3Fdrk1-oZcXvRyeCctinIlb24JMUUrnEUgae9up4_3xJVEpyfl_wOLSCrsl4vXqcrxZcIiBnTcOD4AI-2Uw6X8dXCfuMkJpZZO8fjMLRKJ7Y_0q2BIXB5gEAgSqgTgPf7pKOL6P-Aaxjwm1587D6jEeRVrXdhRWd_N7yn938G-u8cVhoJOpoEZACK_2bIn2rUSkBF2B2bs51iTPPp7p_QLWjpCAIqvBkBudonWrIMdsxMXCB9t" />
               Google
             </button>
-            <button className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+            <button 
+            onClick={()=>{
+              window.location.href = 'http://localhost:3000/api/auth/github';
+            }}
+            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
               <img alt="GitHub" className="w-4 h-4 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />
               GitHub
             </button>

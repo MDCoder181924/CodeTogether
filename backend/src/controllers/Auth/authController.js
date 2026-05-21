@@ -25,10 +25,27 @@ export const registerUser = async (req , res)=>{
 
         const hashedPassword = await bcrypt.hash(password,10);
         
-        const newUser = await User.create({
+      const newUser = await User.create({
          name,
          email,
          password: hashedPassword,
+      });
+
+      const accesstoken = generateAccessToken(newUser);
+      const refreshtoken = generateRefreshToken(newUser);
+
+      res.cookie("accessToken" , accesstoken ,{
+         httpOnly:true,
+         secure: false,
+         sameSite:"strict",
+         maxAge: 15*60*1000,
+      });
+
+      res.cookie("refreshToken", refreshtoken, {
+         httpOnly:true,
+         secure: false,
+         sameSite: "strict",
+         maxAge: 7 * 24 * 60 * 60 * 1000,
       });
 
       newUser.password = undefined;
@@ -36,6 +53,8 @@ export const registerUser = async (req , res)=>{
       res.status(201).json({
          success: true,
          message: "User registered successfully",
+         accesstoken,
+         refreshtoken,
          user : newUser,
       });
 

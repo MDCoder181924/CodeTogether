@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import app from './src/app.js';
+const { default: app } = await import('./src/app.js');
 import http from "http";
 
 import connectDB from './src/config/db.js';

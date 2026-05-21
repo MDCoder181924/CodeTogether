@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema(
         username: {
             type: String,
             unique: true,
+            sparse: true,
             trim: true,
         },
 
@@ -24,7 +25,7 @@ const userSchema = new mongoose.Schema(
 
         password: {
             type: String,
-            required: true,
+            // required: true,
         },
 
         profilePic: {

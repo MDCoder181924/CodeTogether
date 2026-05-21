@@ -1,8 +1,32 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../../services/api';
 
 const GroupLobbyBox = () => {
   const navigate = useNavigate();
+
+  const [groupCode, setGroupCode] = React.useState("");
+  const [groupName, setGroupName] = React.useState('');
+  const [showCreateModal, setShowCreateModal] = React.useState(false);
+
+  const handleJoinGroup = () => {
+    if (!groupCode) return;
+    navigate(`/room/${groupCode}`);
+  };
+
+  const handleCreateGroup = async () => {
+    try {
+      const response = await api.post('/group/create', { groupName, });
+      const code = response.data.group.groupCode;
+      setShowCreateModal(false);
+      setGroupName('');
+      navigate(`/room/${code}`);
+    } catch (error) {
+      console.error(
+        "Create group failed:", error
+      );
+    }
+  };
 
   return (
     <div className="bg-[#0e0e10] min-h-screen flex items-center justify-center relative overflow-hidden">
@@ -26,28 +50,32 @@ const GroupLobbyBox = () => {
           <div className="space-y-4">
             {/* Room Code Field */}
             <div className="space-y-1">
-              <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] ml-1">ROOM CODE</label>
+              <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] ml-1">GROUP CODE</label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-4 text-[#8c909f] text-[20px]">vpn_key</span>
-                <input 
-                  className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 pl-10 pr-4 text-[#e5e1e4] font-mono focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all placeholder:opacity-30" 
-                  placeholder="Enter room ID" 
-                  type="text" 
+                <input
+                  value={groupCode}
+                  onChange={(e) =>
+                    setGroupCode(e.target.value)
+                  }
+                  className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 pl-10 pr-4 text-[#e5e1e4] font-mono focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all placeholder:opacity-30"
+                  placeholder="Enter group code"
+                  type="text"
                 />
               </div>
             </div>
 
             {/* Action Buttons */}
             <div className="grid grid-cols-2 gap-4 pt-4">
-              <button 
-                onClick={() => navigate('/editor')}
+              <button
+                onClick={() => setShowCreateModal(true)}
                 className="bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold py-4 rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all flex items-center justify-center gap-1"
               >
                 <span className="material-symbols-outlined text-[18px]">add_box</span>
                 CREATE ROOM
               </button>
-              <button 
-                onClick={() => navigate('/editor')}
+              <button
+                onClick={handleJoinGroup}
                 className="bg-white/5 border border-white/10 text-[#e5e1e4] text-xs uppercase tracking-widest font-bold py-4 rounded-lg hover:bg-white/10 active:scale-95 transition-all flex items-center justify-center gap-1"
               >
                 <span className="material-symbols-outlined text-[18px]">login</span>
@@ -73,6 +101,45 @@ const GroupLobbyBox = () => {
         <footer className="mt-10 text-center">
           <p className="text-xs uppercase tracking-widest font-bold text-[#8c909f] opacity-40">POWERED BY DISTRIBUTED SYNC ENGINE V2.0</p>
         </footer>
+
+        {
+          showCreateModal && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+              <div className="bg-[#111214] border border-white/10 rounded-2xl p-6 w-full max-w-md">
+                <h2 className="text-2xl font-bold text-white mb-4">
+                  Create New Group
+                </h2>
+                <input
+                  value={groupName}
+                  onChange={(e) =>
+                    setGroupName(e.target.value)
+                  }
+                  className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 px-4 text-[#e5e1e4] mb-4 focus:outline-none focus:border-[#adc6ff]"
+                  placeholder="Enter group name"
+                  type="text"
+                />
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleCreateGroup}
+                    className="flex-1 bg-[#adc6ff] text-[#002e6a] font-bold py-3 rounded-lg"
+                  >
+                    Create
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      setGroupName('');
+                    }}
+                    className="flex-1 bg-white/5 border border-white/10 text-white py-3 rounded-lg"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )
+        }
+
       </main>
 
       {/* Floating Background Visuals */}
@@ -89,7 +156,7 @@ const GroupLobbyBox = () => {
           </div>
         </div>
       </div>
-      
+
       <div className="hidden lg:block absolute top-1/4 right-[15%] opacity-10 pointer-events-none">
         <div className="bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl w-[180px]">
           <div className="flex items-center gap-2 mb-1">

@@ -28,9 +28,7 @@ router.get(`/google/callback`, passport.authenticate("google", { session: false 
         sameSite: "strict",
     });
 
-    res.redirect(
-        process.env.CLIENT_URL
-    );
+    res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
 }
 );
 
@@ -43,16 +41,14 @@ router.get('/github/callback', passport.authenticate("github", { session: false 
     res.cookie("accessToken", accesstoken, {
         httpOnly: true,
         secure: false,
-        sameSite: "strict",
+        sameSite: "lex",
     });
     res.cookie("refreshToken", refreshtoken, {
         httpOnly: true,
         secure: false,
-        sameSite: "strict",
+        sameSite: "lex",
     });
-    res.redirect(
-        process.env.CLIENT_URL
-    );
+    res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
 });
 
 export default router;
