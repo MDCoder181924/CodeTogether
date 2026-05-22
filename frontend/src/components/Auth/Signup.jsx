@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { Link , useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-  const [email , setEmail] = useState("");
-  const [password ,setPassword] = useState("");
-  const [name , setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try{
-      const response = await api.post('/auth/register',{name , email , password})
+    try {
+      const response = await api.post('/auth/register', { name, email, password })
       console.log(response.data);
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
       navigate('/group-lobby');
     }
-    catch(error){
+    catch (error) {
       console.error("Signup failed:", error);
     }
   }
@@ -45,19 +49,19 @@ const Signup = () => {
           {/* Subtle accent top border */}
           <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
 
-          <form onSubmit={(e)=>{handleSubmit(e)}} className="flex flex-col gap-6">
+          <form onSubmit={(e) => { handleSubmit(e) }} className="flex flex-col gap-6">
             {/* Full Name Field */}
             <div className="flex flex-col gap-1">
               <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="full_name">Full Name</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">person</span>
-                <input 
+                <input
                   value={name}
-                  onChange={(e)=>setName(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
-                  id="full_name" 
-                  placeholder="Linus Torvalds" 
-                  type="text" 
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  id="full_name"
+                  placeholder="Linus Torvalds"
+                  type="text"
                   required
                 />
               </div>
@@ -68,13 +72,13 @@ const Signup = () => {
               <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="email">Email Address</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">alternate_email</span>
-                <input 
+                <input
                   value={email}
-                  onChange={(e)=>setEmail(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
-                  id="email" 
-                  placeholder="dev@codetogether.io" 
-                  type="email" 
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  id="email"
+                  placeholder="dev@codetogether.io"
+                  type="email"
                   required
                 />
               </div>
@@ -85,13 +89,13 @@ const Signup = () => {
               <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="password">Security Token</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">lock</span>
-                <input 
+                <input
                   value={password}
-                  onChange={(e)=>setPassword(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-12 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all" 
-                  id="password" 
-                  placeholder="••••••••••••" 
-                  type={showPassword ? "text" : "password"} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-12 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  id="password"
+                  placeholder="••••••••••••"
+                  type={showPassword ? "text" : "password"}
                   required
                 />
                 <button
@@ -117,19 +121,19 @@ const Signup = () => {
 
           {/* Social/Alt Signups */}
           <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
-            <button 
-            onClick={()=>{
-              window.location.href = 'http://localhost:3000/api/auth/google';
-            }}
-            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+            <button
+              onClick={() => {
+                window.location.href = 'http://localhost:3000/api/auth/google';
+              }}
+              className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
               <img alt="Google" className="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTcWPwho4E0zjJ8rp5DHpkLgy1p3Fdrk1-oZcXvRyeCctinIlb24JMUUrnEUgae9up4_3xJVEpyfl_wOLSCrsl4vXqcrxZcIiBnTcOD4AI-2Uw6X8dXCfuMkJpZZO8fjMLRKJ7Y_0q2BIXB5gEAgSqgTgPf7pKOL6P-Aaxjwm1587D6jEeRVrXdhRWd_N7yn938G-u8cVhoJOpoEZACK_2bIn2rUSkBF2B2bs51iTPPp7p_QLWjpCAIqvBkBudonWrIMdsxMXCB9t" />
               Google
             </button>
-            <button 
-            onClick={()=>{
-              window.location.href = 'http://localhost:3000/api/auth/github';
-            }}
-            className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+            <button
+              onClick={() => {
+                window.location.href = 'http://localhost:3000/api/auth/github';
+              }}
+              className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
               <img alt="GitHub" className="w-4 h-4 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />
               GitHub
             </button>
@@ -139,7 +143,7 @@ const Signup = () => {
         {/* Footer Navigation */}
         <footer className="mt-6 text-center">
           <p className="text-sm text-[#c2c6d6]">
-            Already part of the cluster? 
+            Already part of the cluster?
             <Link className="text-[#adc6ff] font-bold hover:underline underline-offset-4 ml-2" to="/login">
               Log in instead
             </Link>

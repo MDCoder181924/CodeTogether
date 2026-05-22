@@ -1,17 +1,17 @@
-import Group from "../../models/Group.js";
+import Group from "../../models/Group/Group.js";
 
 export const joinGroup = async (req, res) => {
     try {
         const { groupCode } = req.body;
 
-        if (!groupCode) {
+        if (!groupCode?.trim()) {
             return res.status(400).json({
                 success: false,
                 message: "Group code is required",
             })
         }
 
-        const group = await Group.findOne({ groupCode: groupCode.toUpperCase() });
+        const group = await Group.findOne({ groupCode: groupCode.trim().toUpperCase() });
 
         if (!group) {
             return res.status(404).json({

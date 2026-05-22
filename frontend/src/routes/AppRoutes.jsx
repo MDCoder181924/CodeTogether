@@ -14,7 +14,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<Login/>} />
         <Route path="/signup" element={<Signup/>} />
         <Route path="/group-lobby" element={<GroupLobbyPage/>} />
-        <Route path="/editor" element={<CollaborativeEditor/>} />
+        <Route path="/room/:groupCode" element={<CollaborativeEditor/>} />
       </Routes>
     </div>
   )

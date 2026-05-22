@@ -3,31 +3,51 @@ import { MonacoBinding } from 'y-monaco'
 import { useRef, useMemo, useState, useEffect } from 'react'
 import * as Y from 'yjs'
 import { SocketIOProvider } from 'y-socket.io'
+import { useParams, useNavigate } from "react-router-dom"
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3000"
 
 function CollaborativeEditor() {
 
+  const navigate = useNavigate();
+
+  const { groupCode } = useParams();
+
   const editorRef = useRef(null)
-  const [username, setUsername] = useState(() => {
-    return new URLSearchParams(window.location.search).get("username") || ""
-  })
   const [users, setUsers] = useState([])
+
+  const currentUser =
+    JSON.parse(localStorage.getItem("user"));
+
+  const username =
+    currentUser?.name || "Anonymous";
 
   const ydoc = useMemo(() => new Y.Doc(), [])
   const yText = useMemo(() => ydoc.getText("monaco"), [ydoc])
 
-  const handleJoin = (event) => {
-    event.preventDefault()
+  const updateUsersFromAwareness = (states) => {
+    const uniqueUsers = Array.from(
+      new Map(
+        states
+          .filter(state => state.user && state.user.username)
+          .map(state => [state.user.id, state.user])
+      ).values()
+    )
 
-    const formData = new FormData(event.currentTarget)
-    const nextUsername = formData.get("username")?.toString().trim()
-
-    if (nextUsername) {
-      setUsername(nextUsername)
-      window.history.replaceState(null, "", `?username=${encodeURIComponent(nextUsername)}`)
-    }
+    setUsers(uniqueUsers)
   }
+
+  // const handleJoin = (event) => {
+  //   event.preventDefault()
+
+  //   const formData = new FormData(event.currentTarget)
+  //   const nextUsername = formData.get("username")?.toString().trim()
+
+  //   if (nextUsername) {
+  //     setUsername(nextUsername)
+  //     localStorage.setItem(`ct-username-${groupCode}`, nextUsername);
+  //   }
+  // }
 
   const handleMount = (editor) => {
     editorRef.current = editor
@@ -41,26 +61,39 @@ function CollaborativeEditor() {
 
   useEffect(() => {
 
+    setUsers([
+      {
+        username,
+      },
+    ]);
+
+  }, [username]);
+
+  useEffect(() => {
+
     console.log(username)
 
     if (username) {
 
-      const provider = new SocketIOProvider(SOCKET_URL, "monaco", ydoc, {
+      const provider = new SocketIOProvider(SOCKET_URL, groupCode, ydoc, {
         autoConnect: true,
       })
 
-      provider.awareness.setLocalStateField("user", { username })
+      provider.awareness.setLocalStateField("user", {
+        id: currentUser?._id || username,
+        username,
+      })
 
 
       const states = Array.from(provider.awareness.getStates().values())
 
       console.log(states)
 
-      setUsers(states.filter(state => state.user && state.user.username).map(state => state.user))
+      updateUsersFromAwareness(states)
 
       provider.awareness.on("change", () => {
         const states = Array.from(provider.awareness.getStates().values())
-        setUsers(states.filter(state => state.user && state.user.username).map(state => state.user))
+        updateUsersFromAwareness(states)
       })
 
       function handleBeforeUnload() {
@@ -81,46 +114,46 @@ function CollaborativeEditor() {
 
 
 
-  if (!username) {
-    return (
-      <main className="min-h-screen w-full bg-[#0e0e10] flex gap-4 p-6 items-center justify-center relative overflow-hidden" >
-        {/* Background Accents */}
-        <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 top-[-10%] left-[-10%]"></div>
-        <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 bottom-[-10%] right-[-10%]"></div>
-        
-        <form
-          onSubmit={handleJoin}
-          className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-xl shadow-2xl flex flex-col gap-6 max-w-[400px] w-full z-10">
-          
-          <div className="text-center mb-2">
-             <span className="material-symbols-outlined text-[#adc6ff] text-[40px] mb-2">person</span>
-             <h1 className="font-sans text-3xl font-bold text-[#e5e1e4] tracking-tight">Join Session</h1>
-          </div>
+  // if (!username) {
+  //   return (
+  //     <main className="min-h-screen w-full bg-[#0e0e10] flex gap-4 p-6 items-center justify-center relative overflow-hidden" >
+  //       {/* Background Accents */}
+  //       <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 top-[-10%] left-[-10%]"></div>
+  //       <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 bottom-[-10%] right-[-10%]"></div>
 
-          <div className="space-y-1">
-            <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] ml-1">USERNAME</label>
-            <div className="relative flex items-center">
-              <span className="material-symbols-outlined absolute left-4 text-[#8c909f] text-[20px]">account_circle</span>
-              <input
-                type="text"
-                placeholder="Enter your username"
-                className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 pl-10 pr-4 text-[#e5e1e4] font-mono focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all placeholder:opacity-30"
-                name="username"
-                required
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            className="w-full bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold py-4 rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all flex items-center justify-center gap-1"
-          >
-            <span className="material-symbols-outlined text-[18px]">login</span>
-            Join Workspace
-          </button>
-        </form>
-      </main>
-    )
-  }
+  //       <form
+  //         onSubmit={handleJoin}
+  //         className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-xl shadow-2xl flex flex-col gap-6 max-w-[400px] w-full z-10">
+
+  //         <div className="text-center mb-2">
+  //           <span className="material-symbols-outlined text-[#adc6ff] text-[40px] mb-2">person</span>
+  //           <h1 className="font-sans text-3xl font-bold text-[#e5e1e4] tracking-tight">Join Session</h1>
+  //         </div>
+
+  //         <div className="space-y-1">
+  //           <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] ml-1">USERNAME</label>
+  //           <div className="relative flex items-center">
+  //             <span className="material-symbols-outlined absolute left-4 text-[#8c909f] text-[20px]">account_circle</span>
+  //             <input
+  //               type="text"
+  //               placeholder="Enter your username"
+  //               className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 pl-10 pr-4 text-[#e5e1e4] font-mono focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all placeholder:opacity-30"
+  //               name="username"
+  //               required
+  //             />
+  //           </div>
+  //         </div>
+  //         <button
+  //           type="submit"
+  //           className="w-full bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold py-4 rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all flex items-center justify-center gap-1"
+  //         >
+  //           <span className="material-symbols-outlined text-[18px]">login</span>
+  //           Join Workspace
+  //         </button>
+  //       </form>
+  //     </main>
+  //   )
+  // }
 
 
   return (
@@ -158,7 +191,7 @@ function CollaborativeEditor() {
             </div>
             <div className="overflow-hidden">
               <p className="text-xs font-bold text-[#e5e1e4] truncate">{username}</p>
-              <p className="text-[10px] text-[#c2c6d6] uppercase tracking-wider truncate">Room: {new URLSearchParams(window.location.search).get("room") || "alpha-10"}</p>
+              <p className="text-[10px] text-[#c2c6d6] uppercase tracking-wider truncate">Room: {groupCode}</p>
             </div>
           </div>
         </div>
@@ -180,7 +213,7 @@ function CollaborativeEditor() {
               <span className="material-symbols-outlined text-[#c2c6d6]">dark_mode</span>
             </button>
             <button className="flex items-center gap-2 px-6 py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150">
-              <span className="material-symbols-outlined" style={{fontVariationSettings: "'FILL' 1"}}>play_arrow</span>
+              <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
               <span>Run</span>
             </button>
           </div>
@@ -190,24 +223,24 @@ function CollaborativeEditor() {
         <div className="flex-1 flex overflow-hidden">
           {/* Code Canvas */}
           <section className="flex-1 flex overflow-hidden bg-[#0a0a0c]">
-             {/* The Monaco Editor */}
-             <div className="flex-1 overflow-hidden relative h-full">
-                <Editor
-                  height="100%"
-                  defaultLanguage="javascript"
-                  defaultValue="// start coding..."
-                  theme="vs-dark"
-                  onMount={handleMount}
-                  options={{
-                    minimap: { enabled: false },
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 14,
-                    lineHeight: 1.7,
-                    padding: { top: 16 },
-                    scrollBeyondLastLine: false,
-                  }}
-                />
-             </div>
+            {/* The Monaco Editor */}
+            <div className="flex-1 overflow-hidden relative h-full">
+              <Editor
+                height="100%"
+                defaultLanguage="javascript"
+                defaultValue="// start coding..."
+                theme="vs-dark"
+                onMount={handleMount}
+                options={{
+                  minimap: { enabled: false },
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  padding: { top: 16 },
+                  scrollBeyondLastLine: false,
+                }}
+              />
+            </div>
           </section>
 
           {/* Users Sidebar (Desktop Only) */}
@@ -220,9 +253,9 @@ function CollaborativeEditor() {
               {users.map((user, index) => (
                 <div key={index} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-xl transition-all hover:bg-white/10">
                   <div className="relative">
-                     <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-white/10 flex items-center justify-center text-xs font-bold text-[#adc6ff] uppercase">
-                       {user.username.substring(0, 2)}
-                     </div>
+                    <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-white/10 flex items-center justify-center text-xs font-bold text-[#adc6ff] uppercase">
+                      {user.username.substring(0, 2)}
+                    </div>
                     <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#2a2a2c]"></span>
                   </div>
                   <div className="flex-1 overflow-hidden">
@@ -240,9 +273,14 @@ function CollaborativeEditor() {
         {/* Bottom Action Bar (Desktop-integrated look) */}
         <footer className="h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex items-center justify-between px-6 z-50">
           <div className="flex items-center gap-4">
-            <button className="flex items-center gap-2 px-4 py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(groupCode);
+              }}
+              className="flex items-center gap-2 px-4 py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg"
+            >
               <span className="material-symbols-outlined text-[18px]">content_copy</span>
-              <span className="text-xs uppercase tracking-widest font-bold">Copy Room Code</span>
+              <span className="text-xs uppercase tracking-widest font-bold">{groupCode}</span>
             </button>
           </div>
           <div className="flex items-center gap-4">
@@ -250,9 +288,9 @@ function CollaborativeEditor() {
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
               Engine: Connected
             </div>
-            <button 
+            <button
               className="flex items-center gap-2 px-4 py-1 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all rounded-lg active:scale-95 duration-150"
-              onClick={() => { window.location.href = '/' }}
+              onClick={() => { navigate("/group-lobby") }}
             >
               <span className="material-symbols-outlined text-[18px]">logout</span>
               <span className="text-xs uppercase tracking-widest font-bold">Leave Room</span>

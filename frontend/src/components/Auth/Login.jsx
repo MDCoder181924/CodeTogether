@@ -7,17 +7,21 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
 
-  const [email , setEmail] = useState("");
-  const [password ,setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    try{
-      const response = await api.post('/auth/login' , {email,password})
+    try {
+      const response = await api.post('/auth/login', { email, password })
       console.log(response.data);
+      localStorage.setItem(
+        "user",
+        JSON.stringify(response.data.user)
+      );
       navigate('/group-lobby');
-    }catch(error){
+    } catch (error) {
       console.error("Login failed:", error);
     }
   }
@@ -44,17 +48,17 @@ const Login = () => {
           </header>
 
           {/* Login Form */}
-          <form onSubmit={(e)=>{handleSubmit(e)}} className="flex flex-col gap-4">
+          <form onSubmit={(e) => { handleSubmit(e) }} className="flex flex-col gap-4">
             <div className="flex flex-col gap-1">
               <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] px-1">EMAIL ADDRESS</label>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#8c909f] group-focus-within:text-[#adc6ff] transition-colors">alternate_email</span>
-                <input 
-                value={email}
-                onChange={(e)=>setEmail(e.target.value)}
-                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-4 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50" 
-                  placeholder="architect@codetogether.io" 
-                  type="email" 
+                <input
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-4 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50"
+                  placeholder="architect@codetogether.io"
+                  type="email"
                   required
                 />
               </div>
@@ -67,12 +71,12 @@ const Login = () => {
               </div>
               <div className="relative group">
                 <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#8c909f] group-focus-within:text-[#adc6ff] transition-colors">lock</span>
-                <input 
+                <input
                   value={password}
-                  onChange={(e)=>setPassword(e.target.value)}
-                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-12 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50" 
-                  placeholder="••••••••" 
-                  type={showPassword ? "text" : "password"} 
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-[#050506] border border-[#424754] rounded-lg pl-[48px] pr-12 py-4 text-base text-[#e5e1e4] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/30 transition-all placeholder:text-[#8c909f]/50"
+                  placeholder="••••••••"
+                  type={showPassword ? "text" : "password"}
                   required
                 />
                 <button
@@ -94,7 +98,7 @@ const Login = () => {
 
             <button className="mt-4 w-full py-4 bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0px_0px_12px_rgba(173,198,255,0.5)] hover:shadow-[0px_0px_20px_rgba(173,198,255,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2" type="submit">
               LOGIN
-              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>  
+              <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
             </button>
           </form>
 
@@ -108,18 +112,18 @@ const Login = () => {
           {/* Social Actions */}
           <div className="grid grid-cols-2 gap-4">
             <button
-            onClick={()=>{
-              window.location.href = 'http://localhost:3000/api/auth/google';
-            }}
-            className="bg-white/5 border border-white/10 py-2 flex items-center justify-center gap-2 rounded-lg text-xs uppercase tracking-widest font-semibold text-[#e5e1e4] hover:bg-white/10 transition-all active:scale-95">
+              onClick={() => {
+                window.location.href = 'http://localhost:3000/api/auth/google';
+              }}
+              className="bg-white/5 border border-white/10 py-2 flex items-center justify-center gap-2 rounded-lg text-xs uppercase tracking-widest font-semibold text-[#e5e1e4] hover:bg-white/10 transition-all active:scale-95">
               <img alt="Google" className="w-5 h-5" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTcWPwho4E0zjJ8rp5DHpkLgy1p3Fdrk1-oZcXvRyeCctinIlb24JMUUrnEUgae9up4_3xJVEpyfl_wOLSCrsl4vXqcrxZcIiBnTcOD4AI-2Uw6X8dXCfuMkJpZZO8fjMLRKJ7Y_0q2BIXB5gEAgSqgTgPf7pKOL6P-Aaxjwm1587D6jEeRVrXdhRWd_N7yn938G-u8cVhoJOpoEZACK_2bIn2rUSkBF2B2bs51iTPPp7p_QLWjpCAIqvBkBudonWrIMdsxMXCB9t" />
               Google
             </button>
             <button
-            onClick={()=>{
-              window.location.href = 'http://localhost:3000/api/auth/github';
-            }}
-            className="bg-white/5 border border-white/10 py-2 flex items-center justify-center gap-2 rounded-lg text-xs uppercase tracking-widest font-semibold text-[#e5e1e4] hover:bg-white/10 transition-all active:scale-95">
+              onClick={() => {
+                window.location.href = 'http://localhost:3000/api/auth/github';
+              }}
+              className="bg-white/5 border border-white/10 py-2 flex items-center justify-center gap-2 rounded-lg text-xs uppercase tracking-widest font-semibold text-[#e5e1e4] hover:bg-white/10 transition-all active:scale-95">
               <img alt="GitHub" className="w-5 h-5 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />
               GitHub
             </button>
@@ -137,7 +141,7 @@ const Login = () => {
         {/* Decorative Background Content */}
         <div className="absolute -z-10 -bottom-16 -right-16 opacity-20 hidden md:block">
           <pre className="font-mono text-xs text-[#adc6ff] select-none pointer-events-none">
-{`{
+            {`{
   "status": "waiting_for_auth",
   "platform": "CodeTogether",
   "version": "2.4.0-stable",
