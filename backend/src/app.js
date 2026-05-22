@@ -7,6 +7,7 @@ import morgan from 'morgan';
 import userRouter from './routes/User/userRoutes.js';
 import passport from './config/passport.js';
 import authRouter from './routes/Auth/authRoutes.js';
+import groupRouter from './routes/Group/groupRoutes.js'
 
 const app = express();
 
@@ -27,6 +28,8 @@ app.use(cors({
 app.use("/api/user" , userRouter);
 
 app.use("/api/auth", authRouter);
+
+app.use("/api/group" , groupRouter)
 
 app.get('/', (req, res) => {
     res.status(200).json({
