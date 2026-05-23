@@ -8,6 +8,7 @@ import userRouter from './routes/User/userRoutes.js';
 import passport from './config/passport.js';
 import authRouter from './routes/Auth/authRoutes.js';
 import groupRouter from './routes/Group/groupRoutes.js'
+import codeRoutes from './routes/Code/codeRoutes.js'
 
 const app = express();
 
@@ -30,6 +31,8 @@ app.use("/api/user" , userRouter);
 app.use("/api/auth", authRouter);
 
 app.use("/api/group" , groupRouter)
+
+app.use('/api/code',codeRoutes)
 
 app.get('/', (req, res) => {
     res.status(200).json({

@@ -2,6 +2,7 @@ import { Editor } from '@monaco-editor/react'
 import { MonacoBinding } from 'y-monaco'
 import { useRef, useMemo, useState, useEffect } from 'react'
 import * as Y from 'yjs'
+import api from "../../services/api"
 import { SocketIOProvider } from 'y-socket.io'
 import { useParams, useNavigate } from "react-router-dom"
 
@@ -15,6 +16,8 @@ function CollaborativeEditor() {
 
   const editorRef = useRef(null)
   const [users, setUsers] = useState([])
+  const [language, setLanguage] = useState("javascript");
+  const [output, setOutput] = useState("");
 
   const currentUser =
     JSON.parse(localStorage.getItem("user"));
@@ -36,6 +39,19 @@ function CollaborativeEditor() {
 
     setUsers(uniqueUsers)
   }
+
+  const handleRunCode = async () => {
+    try {
+      const code = editorRef.current.getValue();
+
+      const response = await api.post('/code/run', { code, language })
+      setOutput(response.data.output);
+    } catch (error) {
+      console.log(error);
+      setOutput("Error running code");
+    }
+  }
+
 
   // const handleJoin = (event) => {
   //   event.preventDefault()
@@ -112,50 +128,6 @@ function CollaborativeEditor() {
     username
   ])
 
-
-
-  // if (!username) {
-  //   return (
-  //     <main className="min-h-screen w-full bg-[#0e0e10] flex gap-4 p-6 items-center justify-center relative overflow-hidden" >
-  //       {/* Background Accents */}
-  //       <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 top-[-10%] left-[-10%]"></div>
-  //       <div className="absolute w-[600px] h-[600px] bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(59,130,246,0)_70%)] rounded-full blur-[60px] -z-10 bottom-[-10%] right-[-10%]"></div>
-
-  //       <form
-  //         onSubmit={handleJoin}
-  //         className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-xl shadow-2xl flex flex-col gap-6 max-w-[400px] w-full z-10">
-
-  //         <div className="text-center mb-2">
-  //           <span className="material-symbols-outlined text-[#adc6ff] text-[40px] mb-2">person</span>
-  //           <h1 className="font-sans text-3xl font-bold text-[#e5e1e4] tracking-tight">Join Session</h1>
-  //         </div>
-
-  //         <div className="space-y-1">
-  //           <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] ml-1">USERNAME</label>
-  //           <div className="relative flex items-center">
-  //             <span className="material-symbols-outlined absolute left-4 text-[#8c909f] text-[20px]">account_circle</span>
-  //             <input
-  //               type="text"
-  //               placeholder="Enter your username"
-  //               className="w-full bg-[#050506] border border-white/10 rounded-lg py-4 pl-10 pr-4 text-[#e5e1e4] font-mono focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all placeholder:opacity-30"
-  //               name="username"
-  //               required
-  //             />
-  //           </div>
-  //         </div>
-  //         <button
-  //           type="submit"
-  //           className="w-full bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold py-4 rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all flex items-center justify-center gap-1"
-  //         >
-  //           <span className="material-symbols-outlined text-[18px]">login</span>
-  //           Join Workspace
-  //         </button>
-  //       </form>
-  //     </main>
-  //   )
-  // }
-
-
   return (
     <div className="bg-[#0e0e10] text-[#e5e1e4] font-sans overflow-hidden flex h-screen w-screen">
       {/* Desktop Navigation Drawer (Fixed Left) */}
@@ -168,7 +140,7 @@ function CollaborativeEditor() {
             <span className="material-symbols-outlined">code</span>
             <span className="text-sm font-bold">Editor</span>
           </div>
-          <div className="text-[#c2c6d6] opacity-70 hover:bg-white/5 hover:opacity-100 transition-opacity duration-200 px-6 py-2 flex items-center gap-4 cursor-pointer">
+          {/* <div className="text-[#c2c6d6] opacity-70 hover:bg-white/5 hover:opacity-100 transition-opacity duration-200 px-6 py-2 flex items-center gap-4 cursor-pointer">
             <span className="material-symbols-outlined">folder_open</span>
             <span className="text-sm font-bold">Files</span>
           </div>
@@ -179,7 +151,7 @@ function CollaborativeEditor() {
           <div className="text-[#c2c6d6] opacity-70 hover:bg-white/5 hover:opacity-100 transition-opacity duration-200 px-6 py-2 flex items-center gap-4 cursor-pointer">
             <span className="material-symbols-outlined">settings</span>
             <span className="text-sm font-bold">Settings</span>
-          </div>
+          </div> */}
         </nav>
         <div className="px-4 mt-auto pt-6 border-t border-white/5">
           <div className="flex items-center gap-4">
@@ -209,10 +181,24 @@ function CollaborativeEditor() {
             </div>
           </div>
           <div className="flex items-center gap-4">
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-4 py-2 rounded-lg outline-none"
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+              <option value="typescript">TypeScript</option>
+              <option value="c">C</option>
+            </select>
             <button className="flex items-center gap-2 px-4 py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10">
               <span className="material-symbols-outlined text-[#c2c6d6]">dark_mode</span>
             </button>
-            <button className="flex items-center gap-2 px-6 py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150">
+            <button
+              onClick={handleRunCode}
+              className="flex items-center gap-2 px-6 py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
               <span>Run</span>
             </button>
@@ -227,7 +213,7 @@ function CollaborativeEditor() {
             <div className="flex-1 overflow-hidden relative h-full">
               <Editor
                 height="100%"
-                defaultLanguage="javascript"
+                language={language}
                 defaultValue="// start coding..."
                 theme="vs-dark"
                 onMount={handleMount}
@@ -240,6 +226,18 @@ function CollaborativeEditor() {
                   scrollBeyondLastLine: false,
                 }}
               />
+            </div>
+          </section>
+
+          {/* Code Run Section */}
+          <section>
+            <div className="h-[100%] bg-black border-t border-white/10 p-4 overflow-auto w-100">
+              <h2 className="text-green-400 text-sm mb-2 uppercase tracking-widest">
+                Output
+              </h2>
+              <pre className="text-white whitespace-pre-wrap text-sm">
+                {output || "Run code to see output"}
+              </pre>
             </div>
           </section>
 
