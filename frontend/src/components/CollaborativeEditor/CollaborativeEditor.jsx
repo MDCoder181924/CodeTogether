@@ -18,6 +18,7 @@ function CollaborativeEditor() {
   const [users, setUsers] = useState([])
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
+  const [showUsers, setShowUsers] = useState(false);
 
   const currentUser =
     JSON.parse(localStorage.getItem("user"));
@@ -129,7 +130,7 @@ function CollaborativeEditor() {
   ])
 
   return (
-    <div className="bg-[#0e0e10] text-[#e5e1e4] font-sans overflow-hidden flex h-screen w-screen">
+    <div className="bg-[#0e0e10] text-[#e5e1e4] font-sans overflow-hidden flex h-[100dvh] w-full">
       {/* Desktop Navigation Drawer (Fixed Left) */}
       <aside className="hidden md:flex flex-col py-6 gap-4 bg-white/5 backdrop-blur-md text-[#adc6ff] font-sans fixed left-0 top-0 h-full w-[260px] border-r border-white/10 z-50">
         <div className="px-4 mb-10">
@@ -170,21 +171,21 @@ function CollaborativeEditor() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 flex flex-col md:ml-[260px] h-full overflow-hidden relative">
+      <main className="flex-1 min-w-0 flex flex-col md:ml-[260px] h-full pb-14 md:pb-0 overflow-hidden relative">
         {/* Top App Bar */}
-        <header className="flex justify-between items-center px-6 h-16 w-full z-50 bg-white/5 backdrop-blur-xl border-b border-white/10 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-0 min-h-16 w-full z-50 bg-white/5 backdrop-blur-xl border-b border-white/10 shrink-0">
+          <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
             <span className="material-symbols-outlined text-[#adc6ff]">terminal</span>
-            <div className="flex flex-col">
+            <div className="flex flex-col min-w-0">
               <span className="text-sm font-bold text-[#adc6ff]">main.js</span>
               <span className="text-[10px] text-[#c2c6d6] -mt-1">Edited just now</span>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 w-full sm:w-auto min-w-0">
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-4 py-2 rounded-lg outline-none"
+              className="min-w-0 flex-1 sm:flex-none bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-3 sm:px-4 py-2 rounded-lg outline-none text-sm"
             >
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -193,24 +194,30 @@ function CollaborativeEditor() {
               <option value="typescript">TypeScript</option>
               <option value="c">C</option>
             </select>
-            <button className="flex items-center gap-2 px-4 py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10">
+            <button className="hidden lg:flex items-center gap-2 px-4 py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10">
               <span className="material-symbols-outlined text-[#c2c6d6]">dark_mode</span>
             </button>
             <button
               onClick={handleRunCode}
-              className="flex items-center gap-2 px-6 py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150">
+              className="flex items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150 shrink-0">
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
-              <span>Run</span>
+              <span className="hidden min-[380px]:inline">Run</span>
+            </button>
+            <button
+              onClick={() => setShowUsers(!showUsers)}
+              className="xl:hidden flex items-center justify-center px-3 py-2 sm:py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10 shrink-0"
+            >
+              <span className="material-symbols-outlined text-[18px]">group</span>
             </button>
           </div>
         </header>
 
         {/* Editor Content */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
           {/* Code Canvas */}
-          <section className="flex-1 flex overflow-hidden bg-[#0a0a0c]">
+          <section className="flex-1 min-h-[320px] sm:min-h-[420px] lg:min-h-0 flex overflow-hidden bg-[#0a0a0c]">
             {/* The Monaco Editor */}
-            <div className="flex-1 overflow-hidden relative h-full">
+            <div className="flex-1 min-w-0 overflow-hidden relative h-full">
               <Editor
                 height="100%"
                 language={language}
@@ -230,8 +237,8 @@ function CollaborativeEditor() {
           </section>
 
           {/* Code Run Section */}
-          <section>
-            <div className="h-[100%] bg-black border-t border-white/10 p-4 overflow-auto w-100">
+          <section className="w-full lg:w-80 shrink-0">
+            <div className="bg-black border-t lg:border-l border-white/10 p-4 overflow-auto min-h-[150px] h-[180px] lg:h-full">
               <h2 className="text-green-400 text-sm mb-2 uppercase tracking-widest">
                 Output
               </h2>
@@ -242,12 +249,12 @@ function CollaborativeEditor() {
           </section>
 
           {/* Users Sidebar (Desktop Only) */}
-          <section className="hidden lg:flex w-[300px] flex-col bg-[#2a2a2c] border-l border-white/10 p-4 gap-4">
+          <section className={`${showUsers ? "flex" : "hidden"} xl:flex w-full xl:w-[300px] shrink-0 flex-col bg-[#2a2a2c] border-t xl:border-t-0 xl:border-l border-white/10 p-4 gap-4 min-h-[230px] xl:min-h-0`}>
             <h2 className="text-xs font-bold uppercase tracking-widest text-[#c2c6d6] flex items-center gap-2">
               <span className="material-symbols-outlined text-[18px]">group</span>
               Users
             </h2>
-            <div className="flex flex-col gap-2 overflow-y-auto pr-1">
+            <div className="flex flex-col gap-2 overflow-y-auto pr-1 min-h-0">
               {users.map((user, index) => (
                 <div key={index} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-xl transition-all hover:bg-white/10">
                   <div className="relative">
@@ -269,29 +276,29 @@ function CollaborativeEditor() {
         </div>
 
         {/* Bottom Action Bar (Desktop-integrated look) */}
-        <footer className="h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex items-center justify-between px-6 z-50">
-          <div className="flex items-center gap-4">
+        <footer className="min-h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 z-50">
+          <div className="flex items-center gap-4 min-w-0">
             <button
               onClick={() => {
                 navigator.clipboard.writeText(groupCode);
               }}
-              className="flex items-center gap-2 px-4 py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg"
+              className="flex items-center gap-2 min-w-0 max-w-[46vw] sm:max-w-none px-3 sm:px-4 py-2 sm:py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg"
             >
               <span className="material-symbols-outlined text-[18px]">content_copy</span>
-              <span className="text-xs uppercase tracking-widest font-bold">{groupCode}</span>
+              <span className="text-xs uppercase tracking-widest font-bold truncate">{groupCode}</span>
             </button>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center justify-end gap-2 sm:gap-4 min-w-0">
             <div className="hidden md:flex items-center gap-2 text-[10px] text-[#c2c6d6] uppercase tracking-widest px-4 border-r border-white/10 h-6">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
               Engine: Connected
             </div>
             <button
-              className="flex items-center gap-2 px-4 py-1 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all rounded-lg active:scale-95 duration-150"
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-1 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all rounded-lg active:scale-95 duration-150"
               onClick={() => { navigate("/group-lobby") }}
             >
               <span className="material-symbols-outlined text-[18px]">logout</span>
-              <span className="text-xs uppercase tracking-widest font-bold">Leave Room</span>
+              <span className="hidden min-[420px]:inline text-xs uppercase tracking-widest font-bold">Leave Room</span>
             </button>
           </div>
         </footer>

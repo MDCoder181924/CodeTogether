@@ -19,7 +19,7 @@ const Home = () => {
           <Link to="/login" className="px-4 py-2 text-xs uppercase tracking-widest font-bold text-[#c2c6d6] hover:text-[#e5e1e4] transition-all">
             Login
           </Link>
-          <Link to="/group-lobby" className="px-4 py-2 bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all">
+          <Link to="/login" className="px-4 py-2 bg-[#adc6ff] text-[#002e6a] text-xs uppercase tracking-widest font-bold rounded-lg hover:shadow-[0_0_12px_rgba(173,198,255,0.5)] active:scale-95 transition-all">
             Run
           </Link>
         </div>
