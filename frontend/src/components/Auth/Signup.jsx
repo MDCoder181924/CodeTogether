@@ -8,124 +8,168 @@ const Signup = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setErrorMsg("");
     try {
-      const response = await api.post('/auth/register', { name, email, password })
+      const response = await api.post('/auth/register', { name, email, password });
       console.log(response.data);
       localStorage.setItem(
         "user",
         JSON.stringify(response.data.user)
       );
       navigate('/group-lobby');
-    }
-    catch (error) {
+    } catch (error) {
       console.error("Signup failed:", error);
+      setErrorMsg("Registration failed. Please make sure the email is unique and valid.");
+    } finally {
+      setLoading(false);
     }
-  }
-
+  };
 
   return (
-    <div className="bg-[#0e0e10] text-[#e5e1e4] flex items-center justify-center min-h-screen p-6 overflow-x-hidden selection:bg-[#adc6ff]/30 relative">
-      {/* Decorative Blur Orbs */}
-      <div className="absolute top-[-100px] left-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(0,0,0,0)_70%)] blur-[60px] -z-10"></div>
-      <div className="absolute bottom-[-100px] right-[-100px] w-[400px] h-[400px] rounded-full bg-[radial-gradient(circle,rgba(59,130,246,0.15)_0%,rgba(0,0,0,0)_70%)] blur-[60px] opacity-50 -z-10"></div>
+    <div className="font-body-md bg-[#000000] text-[#e4e1ed] overflow-x-hidden selection:bg-primary/30 min-h-screen flex items-center justify-center p-4 sm:p-6 relative grid-bg">
+      <div className="noise-overlay"></div>
+      
+      {/* Background Glowing Leakages */}
+      <div className="light-leak bg-[#8083ff]/15 -top-40 -left-40"></div>
+      <div className="light-leak bg-[#00ded1]/10 bottom-0 -right-40"></div>
 
-      <main className="w-full max-w-[480px] relative z-10">
-        {/* Brand Header */}
-        <header className="flex flex-col items-center mb-10">
-          <div className="flex items-center gap-2 mb-4">
-            <span className="material-symbols-outlined text-[#adc6ff] text-3xl">terminal</span>
-            <h1 className="font-sans text-3xl font-black text-[#e5e1e4] tracking-tighter">CodeTogether</h1>
-          </div>
-          <p className="text-base text-[#c2c6d6] text-center max-w-[320px]">
-            Enter the focus flow. Join thousands of developers building in real-time.
-          </p>
-        </header>
+      {/* Back to Home Button */}
+      <Link 
+        to="/" 
+        className="fixed top-6 left-6 sm:top-8 sm:left-8 flex items-center gap-2 text-on-surface-variant hover:text-primary transition-all duration-300 group z-50 bg-[#13131b]/40 backdrop-blur-md px-4 py-2 border border-white/5 rounded-full"
+      >
+        <span className="material-symbols-outlined text-sm group-hover:-translate-x-1 transition-transform">arrow_back</span>
+        <span className="font-label-mono text-xs uppercase tracking-wider">Return Home</span>
+      </Link>
 
-        {/* Glassmorphism Signup Card */}
-        <section className="bg-white/5 backdrop-blur-md border border-white/10 rounded-xl p-6 shadow-2xl relative overflow-hidden">
-          {/* Subtle accent top border */}
-          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+      <main className="w-full max-w-[440px] relative z-10 animate-float">
+        {/* Glassmorphic Auth Box */}
+        <div className="glass-card rounded-[24px] p-8 sm:p-10 shadow-2xl flex flex-col gap-6">
+          
+          {/* Header Section */}
+          <header className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-gradient text-3xl font-bold">terminal</span>
+              <h1 className="font-display-xl text-2xl font-bold tracking-tight text-gradient">CodeTogether</h1>
+            </div>
+            <p className="text-sm text-on-surface-variant text-center leading-relaxed">
+              Enter the focus flow. Join thousands of developers coding in real-time.
+            </p>
+          </header>
 
-          <form onSubmit={(e) => { handleSubmit(e) }} className="flex flex-col gap-6">
-            {/* Full Name Field */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="full_name">Full Name</label>
+          {/* Error Message banner */}
+          {errorMsg && (
+            <div className="p-3 bg-error/10 border border-error/20 rounded-xl text-center text-xs text-error font-body-md animate-pulse">
+              {errorMsg}
+            </div>
+          )}
+
+          {/* Signup Form */}
+          <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+            
+            {/* Full Name */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant px-1" htmlFor="full_name">Full Name</label>
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">person</span>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors text-lg">person</span>
                 <input
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-[44px] pr-4 py-3.5 text-sm text-[#e5e1e4] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/30 shadow-inner"
                   id="full_name"
                   placeholder="Linus Torvalds"
                   type="text"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
 
-            {/* Email Field */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="email">Email Address</label>
+            {/* Email Address */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant px-1" htmlFor="email">Email Address</label>
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">alternate_email</span>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors text-lg">alternate_email</span>
                 <input
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-4 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-[44px] pr-4 py-3.5 text-sm text-[#e5e1e4] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/30 shadow-inner"
                   id="email"
                   placeholder="dev@codetogether.io"
                   type="email"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
 
-            {/* Password Field */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs uppercase tracking-widest font-semibold text-[#c2c6d6] opacity-70" htmlFor="password">Security Token</label>
+            {/* Password */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant px-1" htmlFor="password">Security Token (Password)</label>
               <div className="relative group">
-                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-[#c2c6d6] group-focus-within:text-[#adc6ff] transition-colors text-[20px]">lock</span>
+                <span className="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-outline/40 group-focus-within:text-primary transition-colors text-lg">lock</span>
                 <input
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-[#0e0e10] border border-white/10 rounded-lg py-4 pl-[48px] pr-12 text-base text-[#e5e1e4] placeholder:text-[#8c909f] focus:outline-none focus:border-[#adc6ff] focus:ring-2 focus:ring-[#adc6ff]/20 transition-all"
+                  className="w-full bg-black/40 border border-white/10 rounded-xl pl-[44px] pr-12 py-3.5 text-sm text-[#e5e1e4] focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-outline/30 shadow-inner"
                   id="password"
                   placeholder="••••••••••••"
                   type={showPassword ? "text" : "password"}
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0 m-0 text-[#c2c6d6] hover:text-[#adc6ff] transition-colors focus:outline-none"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center justify-center p-0 m-0 text-outline/40 hover:text-primary transition-colors focus:outline-none"
                 >
-                  <span className="material-symbols-outlined text-[20px]">
+                  <span className="material-symbols-outlined text-lg">
                     {showPassword ? 'visibility_off' : 'visibility'}
                   </span>
                 </button>
               </div>
               <div className="mt-1 px-1 flex justify-between">
-                <span className="font-mono text-xs text-[#8c909f]">Complexity: <span className="text-[#34d399]">High</span></span>
+                <span className="font-label-mono text-[10px] text-outline/40">Complexity: <span className="text-[#34d399] font-bold">High</span></span>
               </div>
             </div>
 
-            {/* Sign Up Button */}
-            <button className="mt-2 w-full bg-[#adc6ff] py-4 rounded-lg text-2xl text-[#002e6a] font-bold shadow-[0_0_20px_rgba(173,198,255,0.3)] hover:shadow-[0_0_30px_rgba(173,198,255,0.5)] active:scale-[0.98] transition-all duration-200" type="submit">
-              Sign Up
+            {/* Submit Button */}
+            <button 
+              className="mt-4 w-full py-4 bg-primary text-[#0d0096] text-xs uppercase tracking-widest font-black rounded-xl shadow-[0_0_20px_rgba(192,193,255,0.4)] hover:shadow-[0_0_30px_rgba(192,193,255,0.6)] active:scale-95 transition-all flex items-center justify-center gap-2 hover:-translate-y-0.5" 
+              type="submit"
+              disabled={loading}
+            >
+              {loading ? (
+                <span>Synthesizing Seat...</span>
+              ) : (
+                <>
+                  SPIN UP ACCOUNT
+                  <span className="material-symbols-outlined text-sm font-bold">arrow_forward</span>
+                </>
+              )}
             </button>
           </form>
 
-          {/* Social/Alt Signups */}
-          <div className="mt-6 pt-6 border-t border-white/5 grid grid-cols-2 gap-4">
+          {/* Social Divider */}
+          <div className="flex items-center gap-4 py-2">
+            <div className="h-px flex-1 bg-white/10"></div>
+            <span className="text-[9px] uppercase tracking-[0.2em] font-black text-outline/40">CONTINUE FLOW WITH</span>
+            <div className="h-px flex-1 bg-white/10"></div>
+          </div>
+
+          {/* Social Logins */}
+          <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => {
                 window.location.href = 'http://localhost:3000/api/auth/google';
               }}
-              className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+              className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
               <img alt="Google" className="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTcWPwho4E0zjJ8rp5DHpkLgy1p3Fdrk1-oZcXvRyeCctinIlb24JMUUrnEUgae9up4_3xJVEpyfl_wOLSCrsl4vXqcrxZcIiBnTcOD4AI-2Uw6X8dXCfuMkJpZZO8fjMLRKJ7Y_0q2BIXB5gEAgSqgTgPf7pKOL6P-Aaxjwm1587D6jEeRVrXdhRWd_N7yn938G-u8cVhoJOpoEZACK_2bIn2rUSkBF2B2bs51iTPPp7p_QLWjpCAIqvBkBudonWrIMdsxMXCB9t" />
               Google
             </button>
@@ -133,31 +177,29 @@ const Signup = () => {
               onClick={() => {
                 window.location.href = 'http://localhost:3000/api/auth/github';
               }}
-              className="w-full bg-white/5 border border-white/10 hover:bg-white/10 transition-colors py-2 rounded-lg flex items-center justify-center gap-2 text-xs font-semibold text-[#e5e1e4] uppercase tracking-widest">
+              className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
               <img alt="GitHub" className="w-4 h-4 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />
               GitHub
             </button>
           </div>
-        </section>
 
-        {/* Footer Navigation */}
-        <footer className="mt-6 text-center">
-          <p className="text-sm text-[#c2c6d6]">
-            Already part of the cluster?
-            <Link className="text-[#adc6ff] font-bold hover:underline underline-offset-4 ml-2" to="/login">
+          {/* Signup Footer */}
+          <footer className="mt-4 pt-6 border-t border-white/5 flex flex-col items-center gap-2">
+            <p className="text-xs text-on-surface-variant">Already part of the low-latency cluster?</p>
+            <Link className="text-xs uppercase tracking-[0.15em] font-black text-primary hover:text-tertiary transition-colors" to="/login">
               Log in instead
             </Link>
-          </p>
-        </footer>
+          </footer>
+        </div>
 
-        {/* Decorative Code Snippet Card (Floating Background) */}
+        {/* Floating background console cards (Desktop only) */}
         <div className="absolute -right-48 top-1/4 hidden lg:block w-72 bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl opacity-40 rotate-6 pointer-events-none">
           <div className="flex gap-1 mb-2">
             <div className="w-2 h-2 rounded-full bg-red-500/50"></div>
             <div className="w-2 h-2 rounded-full bg-yellow-500/50"></div>
             <div className="w-2 h-2 rounded-full bg-green-500/50"></div>
           </div>
-          <pre className="font-mono text-xs leading-relaxed">
+          <pre className="font-mono text-xs leading-relaxed text-outline/60">
             <span className="text-[#818cf8]">const</span> <span className="text-[#3b82f6]">session</span> = <span className="text-[#818cf8]">await</span>
             <br />
             CodeTogether.<span className="text-[#3b82f6]">init</span>({`{`}
@@ -169,20 +211,9 @@ const Signup = () => {
             {`}`});
           </pre>
         </div>
-
-        <div className="absolute -left-48 bottom-1/4 hidden lg:block w-72 bg-white/5 backdrop-blur-md border border-white/10 p-4 rounded-xl opacity-30 -rotate-3 pointer-events-none">
-          <div className="flex items-center gap-2 mb-2 border-b border-white/10 pb-2">
-            <div className="w-6 h-6 rounded-full bg-[#adc6ff]/20"></div>
-            <div className="h-2 w-24 bg-white/10 rounded"></div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-2 w-full bg-white/5 rounded"></div>
-            <div className="h-2 w-4/5 bg-white/5 rounded"></div>
-          </div>
-        </div>
       </main>
     </div>
   );
-}
+};
 
 export default Signup;
