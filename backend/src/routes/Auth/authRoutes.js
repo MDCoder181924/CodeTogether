@@ -16,16 +16,17 @@ router.get(`/google/callback`, passport.authenticate("google", { session: false 
 
     const refreshtoken = generateRefreshToken(req.user);
 
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("accessToken", accesstoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "strict",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
     });
 
     res.cookie("refreshToken", refreshtoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "strict",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
     });
 
     res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
@@ -38,15 +39,16 @@ router.get('/github/callback', passport.authenticate("github", { session: false 
     const accesstoken = generateAccessToken(req.user);
     const refreshtoken = generateRefreshToken(req.user);
 
+    const isProd = process.env.NODE_ENV === "production";
     res.cookie("accessToken", accesstoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lex",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
     });
     res.cookie("refreshToken", refreshtoken, {
         httpOnly: true,
-        secure: false,
-        sameSite: "lex",
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
     });
     res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
 });

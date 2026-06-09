@@ -20,8 +20,11 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
+const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+const clientOrigin = rawClientUrl.replace(/\/$/, '');
+
 app.use(cors({
-    origin: process.env.CLIENT_URL,
+    origin: clientOrigin,
     credentials: true,
 }));
 

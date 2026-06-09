@@ -5,9 +5,12 @@ import Group from "../models/Group/Group.js";
 
 export const setupEditorSocket = (server) => {
 
+    const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+    const clientOrigin = rawClientUrl.replace(/\/$/, '');
+
     const io = new Server(server, {
         cors: {
-            origin: process.env.CLIENT_URL,
+            origin: clientOrigin,
             credentials: true,
         },
     });

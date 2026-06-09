@@ -3,6 +3,17 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { generateAccessToken , generateRefreshToken } from "../../services/Auth/sessionService.js";
 
+const getCookieOptions = (maxAge) => {
+    const isProd = process.env.NODE_ENV === "production";
+    const options = {
+        httpOnly: true,
+        secure: isProd,
+        sameSite: isProd ? "none" : "lax",
+    };
+    if (maxAge) options.maxAge = maxAge;
+    return options;
+};
+
 export const registerUser = async (req , res)=>{
     try {
         const { name , email , password } = req.body;
@@ -34,19 +45,8 @@ export const registerUser = async (req , res)=>{
       const accesstoken = generateAccessToken(newUser);
       const refreshtoken = generateRefreshToken(newUser);
 
-      res.cookie("accessToken" , accesstoken ,{
-         httpOnly:true,
-         secure: false,
-         sameSite:"strict",
-         maxAge: 15*60*1000,
-      });
-
-      res.cookie("refreshToken", refreshtoken, {
-         httpOnly:true,
-         secure: false,
-         sameSite: "strict",
-         maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+      res.cookie("accessToken", accesstoken, getCookieOptions(15 * 60 * 1000));
+      res.cookie("refreshToken", refreshtoken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
 
       newUser.password = undefined;
 
@@ -98,19 +98,8 @@ export const LoginUser = async ( req , res ) => {
         const accesstoken = generateAccessToken(user);
         const refreshtoken = generateRefreshToken(user);
 
-        res.cookie("accessToken" , accesstoken ,{
-            httpOnly:true,
-            secure: false,
-            sameSite:"strict",
-            maxAge: 15*60*1000,
-        })
-
-        res.cookie("refreshToken", refreshtoken, {
-            httpOnly:true,
-            secure: false,
-            sameSite: "strict",
-            maxAge: 7 * 24 * 60 * 60 * 1000,
-        });
+        res.cookie("accessToken", accesstoken, getCookieOptions(15 * 60 * 1000));
+        res.cookie("refreshToken", refreshtoken, getCookieOptions(7 * 24 * 60 * 60 * 1000));
 
         user.password = undefined;
 
@@ -134,9 +123,8 @@ export const LoginUser = async ( req , res ) => {
 
 export const LogoutUser = async (req ,res)=>{
     try{
-        res.clearCookie("accessToken");
-        res.clearCookie
-        ("refreshToken");
+        res.clearCookie("accessToken", getCookieOptions());
+        res.clearCookie("refreshToken", getCookieOptions());
 
         res.status(200).json({
             success: true,
@@ -169,12 +157,7 @@ export const refreshAccessToken = async(req , res)=>{
         const newAccessToken = generateAccessToken(decoded.userId);
 
 
-        res.cookie("accessToken" , newAccessToken , {
-            httpOnly: true,
-            secure: false,
-            sameSite: "strict",
-            maxAge: 15*60*1000,
-        })
+        res.cookie("accessToken", newAccessToken, getCookieOptions(15 * 60 * 1000));
 
         res.status(200).json({
             success:true,
