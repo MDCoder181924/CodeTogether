@@ -25,7 +25,7 @@ const Signup = () => {
       navigate('/group-lobby');
     } catch (error) {
       console.error("Signup failed:", error);
-      setErrorMsg("Registration failed. Please make sure the email is unique and valid.");
+      setErrorMsg(error.response?.data?.message || "Registration failed. Please make sure the email is unique and valid.");
     } finally {
       setLoading(false);
     }

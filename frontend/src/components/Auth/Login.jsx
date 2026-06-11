@@ -25,7 +25,7 @@ const Login = () => {
       navigate('/group-lobby');
     } catch (error) {
       console.error("Login failed:", error);
-      setErrorMsg("Invalid credentials. Please verify your email and security token.");
+      setErrorMsg(error.response?.data?.message || "Invalid credentials. Please verify your email and security token.");
     } finally {
       setLoading(false);
     }
