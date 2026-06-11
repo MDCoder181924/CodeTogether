@@ -167,7 +167,7 @@ const Signup = () => {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => {
-                const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${window.location.origin}/api` : 'http://localhost:3000/api');
                 window.location.href = `${apiBase}/auth/google`;
               }}
               className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
@@ -176,7 +176,7 @@ const Signup = () => {
             </button>
             <button
               onClick={() => {
-                const apiBase = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+                const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${window.location.origin}/api` : 'http://localhost:3000/api');
                 window.location.href = `${apiBase}/auth/github`;
               }}
               className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
