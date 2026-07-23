@@ -29,7 +29,8 @@ router.get(`/google/callback`, passport.authenticate("google", { session: false 
         sameSite: isProd ? "none" : "lax",
     });
 
-    res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+    res.redirect(`${clientUrl}/group-lobby`);
 }
 );
 
@@ -50,7 +51,8 @@ router.get('/github/callback', passport.authenticate("github", { session: false 
         secure: isProd,
         sameSite: isProd ? "none" : "lax",
     });
-    res.redirect(`${process.env.CLIENT_URL}/group-lobby`);
+    const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+    res.redirect(`${clientUrl}/group-lobby`);
 });
 
 export default router;

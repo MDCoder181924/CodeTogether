@@ -14,6 +14,10 @@ const messageSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    isAI: {
+        type: Boolean,
+        default: false,
+    },
     timestamp: {
         type: Date,
         default: Date.now,

@@ -2,15 +2,34 @@ import { Server } from "socket.io";
 import { YSocketIO } from "y-socket.io/dist/server";
 import Message from "../models/Chat/Message.js";
 import Group from "../models/Group/Group.js";
+import { askGemini } from "../services/geminiService.js";
 
 export const setupEditorSocket = (server) => {
 
-    const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-    const clientOrigin = rawClientUrl.replace(/\/$/, '');
+    const allowedOrigins = [
+        'http://localhost:5173',
+        'http://localhost:3000',
+        'http://localhost:4173',
+        'http://127.0.0.1:5173',
+        'http://127.0.0.1:3000',
+        'http://127.0.0.1:4173',
+    ];
+
+    if (process.env.CLIENT_URL) {
+        const cleanClientUrl = process.env.CLIENT_URL.replace(/\/$/, '');
+        if (!allowedOrigins.includes(cleanClientUrl)) {
+            allowedOrigins.push(cleanClientUrl);
+        }
+    }
 
     const io = new Server(server, {
         cors: {
-            origin: clientOrigin,
+            origin: (origin, callback) => {
+                if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+                    return callback(null, true);
+                }
+                return callback(null, true);
+            },
             credentials: true,
         },
     });
@@ -44,20 +63,85 @@ export const setupEditorSocket = (server) => {
 
         socket.on("send-message", async (data) => {
             try {
+                // 1. Save user message to database
                 const newMessage = await Message.create({
                     roomCode: data.roomCode,
                     sender: data.sender,
                     text: data.text,
+                    isAI: !!data.isAI,
                     timestamp: data.timestamp || new Date().toISOString()
                 });
 
+                // 2. Broadcast message to all users in the room
                 io.to(data.roomCode).emit("receive-message", {
+                    _id: newMessage._id,
+                    roomCode: newMessage.roomCode,
                     text: newMessage.text,
                     sender: newMessage.sender,
+                    isAI: newMessage.isAI,
                     timestamp: newMessage.timestamp
                 });
+
+                // 3. Check if this message should trigger Gemini AI
+                const textLower = (data.text || '').toLowerCase();
+                const isExplicitAI = data.askAI === true || data.targetAI === true;
+                const containsAITrigger = textLower.includes('@ai') || textLower.includes('@gemini') || textLower.startsWith('/ai');
+
+                if (isExplicitAI || containsAITrigger) {
+                    // Notify room that AI is thinking
+                    io.to(data.roomCode).emit("ai-typing", {
+                        roomCode: data.roomCode,
+                        isTyping: true,
+                        sender: "Gemini AI"
+                    });
+
+                    // Fetch context: active code, language, and recent chat history
+                    const group = await Group.findOne({ groupCode: data.roomCode.trim().toUpperCase() });
+                    const recentMessages = await Message.find({ roomCode: data.roomCode }).sort({ timestamp: 1 }).limit(20);
+
+                    const currentCode = data.currentCode || (group ? group.currentCode : "");
+                    const language = data.language || (group ? group.language : "javascript");
+
+                    let aiResponseText = "";
+                    try {
+                        aiResponseText = await askGemini({
+                            prompt: data.text,
+                            chatHistory: recentMessages,
+                            currentCode,
+                            language
+                        });
+                    } catch (geminiError) {
+                        console.error("Gemini AI error:", geminiError.message);
+                        aiResponseText = `⚠️ **Gemini AI Error:** ${geminiError.message || "Unable to reach AI service. Please verify your GEMINI_API_KEY."}`;
+                    }
+
+                    // Save AI response to database
+                    const aiMessage = await Message.create({
+                        roomCode: data.roomCode,
+                        sender: "Gemini AI",
+                        text: aiResponseText,
+                        isAI: true,
+                        timestamp: new Date().toISOString()
+                    });
+
+                    // Stop typing animation and broadcast AI message to room
+                    io.to(data.roomCode).emit("ai-typing", {
+                        roomCode: data.roomCode,
+                        isTyping: false,
+                        sender: "Gemini AI"
+                    });
+
+                    io.to(data.roomCode).emit("receive-message", {
+                        _id: aiMessage._id,
+                        roomCode: aiMessage.roomCode,
+                        text: aiMessage.text,
+                        sender: aiMessage.sender,
+                        isAI: true,
+                        timestamp: aiMessage.timestamp
+                    });
+                }
             } catch (err) {
-                console.error("Error saving message:", err);
+                console.error("Error saving/processing message:", err);
             }
         });
 

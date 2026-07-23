@@ -12,6 +12,7 @@ import passport from './config/passport.js';
 import authRouter from './routes/Auth/authRoutes.js';
 import groupRouter from './routes/Group/groupRoutes.js'
 import codeRoutes from './routes/Code/codeRoutes.js'
+import chatRouter from './routes/Chat/chatRoutes.js'
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -26,11 +27,29 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
 
-const rawClientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-const clientOrigin = rawClientUrl.replace(/\/$/, '');
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173',
+    'http://127.0.0.1:5173',
+    'http://127.0.0.1:3000',
+    'http://127.0.0.1:4173',
+];
+
+if (process.env.CLIENT_URL) {
+    const cleanClientUrl = process.env.CLIENT_URL.replace(/\/$/, '');
+    if (!allowedOrigins.includes(cleanClientUrl)) {
+        allowedOrigins.push(cleanClientUrl);
+    }
+}
 
 app.use(cors({
-    origin: clientOrigin,
+    origin: (origin, callback) => {
+        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+            return callback(null, true);
+        }
+        return callback(null, true);
+    },
     credentials: true,
 }));
 
@@ -50,6 +69,8 @@ app.use("/api/auth", authRouter);
 app.use("/api/group" , groupRouter)
 
 app.use('/api/code',codeRoutes)
+
+app.use('/api/chat', chatRouter)
 
 if (fs.existsSync(staticPath)) {
     app.get('*all', (req, res, next) => {

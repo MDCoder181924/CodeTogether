@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import api, { getApiBaseUrl } from '../../services/api';
 
 const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -167,8 +167,7 @@ const Signup = () => {
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => {
-                const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${window.location.origin}/api` : 'http://localhost:3000/api');
-                window.location.href = `${apiBase}/auth/google`;
+                window.location.href = `${getApiBaseUrl()}/auth/google`;
               }}
               className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
               <img alt="Google" className="w-4 h-4" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDBTcWPwho4E0zjJ8rp5DHpkLgy1p3Fdrk1-oZcXvRyeCctinIlb24JMUUrnEUgae9up4_3xJVEpyfl_wOLSCrsl4vXqcrxZcIiBnTcOD4AI-2Uw6X8dXCfuMkJpZZO8fjMLRKJ7Y_0q2BIXB5gEAgSqgTgPf7pKOL6P-Aaxjwm1587D6jEeRVrXdhRWd_N7yn938G-u8cVhoJOpoEZACK_2bIn2rUSkBF2B2bs51iTPPp7p_QLWjpCAIqvBkBudonWrIMdsxMXCB9t" />
@@ -176,8 +175,7 @@ const Signup = () => {
             </button>
             <button
               onClick={() => {
-                const apiBase = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? `${window.location.origin}/api` : 'http://localhost:3000/api');
-                window.location.href = `${apiBase}/auth/github`;
+                window.location.href = `${getApiBaseUrl()}/auth/github`;
               }}
               className="bg-white/5 border border-white/10 hover:bg-white/10 py-2.5 flex items-center justify-center gap-2 rounded-xl text-xs uppercase tracking-widest font-bold text-on-surface hover:border-primary/40 transition-all active:scale-95">
               <img alt="GitHub" className="w-4 h-4 grayscale contrast-200 brightness-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD4KjIB08yIPSUzpUvSeButn87s7q8W2rmuZ82Qn5VJH5QRfeVZ31v44l_O5FeuTcOKUpvqvKR93qgeThq0iT9RX1eaTjAR5vQZjG4pmRNyF1bg3vhrps1Dwas1V9I6eL57Q7xhpe1C4BeNbhvz6IGI1yZwkMJs-nq6_S0LqJLae1ALIFuU2-FPItM9x5w0FTJyPRcfEEHLHIVtcDj3l9soirfXL8rDhV-dCRRwEmxzo5-5C1W4j7UlETGZyKhPZlk8cVwYsxgIoHzE" />

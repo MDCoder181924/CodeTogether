@@ -2,13 +2,13 @@ import { Editor } from '@monaco-editor/react'
 import { MonacoBinding } from 'y-monaco'
 import { useRef, useMemo, useState, useEffect } from 'react'
 import * as Y from 'yjs'
-import api from "../../services/api"
+import api, { getSocketUrl } from "../../services/api"
 import { SocketIOProvider } from 'y-socket.io'
 import { useParams, useNavigate } from "react-router-dom"
 import ChatPanel from "./ChatPanel";
 import { io } from "socket.io-client";
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || (import.meta.env.PROD ? window.location.origin : "http://localhost:3000");
+const SOCKET_URL = getSocketUrl();
 
 function CollaborativeEditor() {
 
@@ -399,7 +399,7 @@ function CollaborativeEditor() {
 
             {/* Chat room panel (persists state by staying mounted in the DOM) */}
             <div className={`flex-1 min-h-0 h-full ${activeTab === "chat" ? "" : "hidden"}`}>
-              <ChatPanel groupCode={groupCode} username={username} />
+              <ChatPanel groupCode={groupCode} username={username} currentCode={yText.toString()} language={language} />
             </div>
           </section>
 
