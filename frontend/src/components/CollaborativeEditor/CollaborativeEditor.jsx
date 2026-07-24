@@ -21,9 +21,10 @@ function CollaborativeEditor() {
   const [users, setUsers] = useState([])
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
-  const [showUsers, setShowUsers] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("users");
+  const [isOutputOpen, setIsOutputOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
 
   const currentUser =
     JSON.parse(localStorage.getItem("user"));
@@ -47,8 +48,10 @@ function CollaborativeEditor() {
   }
 
   const handleRunCode = async () => {
+    // Automatically open the output panel when code is executed
+    setIsOutputOpen(true);
     try {
-      const code = editorRef.current.getValue();
+      const code = editorRef.current ? editorRef.current.getValue() : yText.toString();
 
       const response = await api.post('/code/run', { code, language })
       setOutput(response.data.output);
@@ -193,7 +196,13 @@ function CollaborativeEditor() {
             <span className="material-symbols-outlined text-[20px]">folder_open</span>
             <span className="text-sm font-medium">Files</span>
           </div>
-          <div className="text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5 px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200">
+          <div 
+            onClick={() => {
+              setIsChatOpen(true);
+              setActiveTab("users");
+            }}
+            className="text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5 px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200"
+          >
             <span className="material-symbols-outlined text-[20px]">group</span>
             <span className="text-sm font-medium">Collaborators</span>
           </div>
@@ -234,7 +243,7 @@ function CollaborativeEditor() {
         {/* Top App Bar */}
         <header className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-0 min-h-16 w-full z-30 bg-white/5 backdrop-blur-xl border-b border-white/10 shrink-0">
           <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto min-w-0">
-            {/* Hamburger Button for Mobile (Matching the user's second image design) */}
+            {/* Hamburger Button for Mobile */}
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="md:hidden flex flex-col justify-center items-center gap-1.5 w-10 h-10 px-2.5 rounded-lg border border-white/10 bg-white/5 hover:bg-white/10 active:scale-95 duration-150 shrink-0 cursor-pointer text-white"
@@ -251,11 +260,12 @@ function CollaborativeEditor() {
               <span className="text-[10px] text-[#c2c6d6] -mt-1">Edited just now</span>
             </div>
           </div>
-          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-4 w-full sm:w-auto min-w-0">
+
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto min-w-0">
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="min-w-0 flex-1 sm:flex-none bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-3 sm:px-4 py-2 rounded-lg outline-none text-sm"
+              className="min-w-0 flex-1 sm:flex-none bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-3 sm:px-4 py-2 rounded-lg outline-none text-sm cursor-pointer"
             >
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -264,33 +274,56 @@ function CollaborativeEditor() {
               <option value="typescript">TypeScript</option>
               <option value="c">C</option>
             </select>
-            <button className="hidden lg:flex items-center gap-2 px-4 py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10">
-              <span className="material-symbols-outlined text-[#c2c6d6]">dark_mode</span>
-            </button>
+
+            {/* Run Code Button */}
             <button
               onClick={handleRunCode}
-              className="flex items-center justify-center gap-2 px-3 sm:px-6 py-2 sm:py-1 bg-[#3b82f6] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150 shrink-0">
+              className="flex items-center justify-center gap-2 px-3 sm:px-5 py-2 sm:py-1.5 bg-[#3b82f6] hover:bg-[#2563eb] text-white text-xs uppercase tracking-widest font-bold rounded-lg shadow-[0_0_12px_rgba(59,130,246,0.5)] active:scale-95 duration-150 shrink-0 cursor-pointer"
+              title="Run Code"
+            >
               <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
               <span className="hidden min-[380px]:inline">Run</span>
             </button>
+
+            {/* Output Toggle Button */}
             <button
-              onClick={() => {
-                setShowUsers(!showUsers);
-                setActiveTab("users");
-              }}
-              className="xl:hidden flex items-center justify-center px-3 py-2 sm:py-1 bg-white/5 hover:bg-white/10 text-[#e5e1e4] transition-all active:scale-95 duration-150 rounded-lg border border-white/10 shrink-0"
+              onClick={() => setIsOutputOpen(!isOutputOpen)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border text-xs uppercase tracking-wider font-bold transition-all active:scale-95 duration-150 shrink-0 cursor-pointer ${
+                isOutputOpen
+                  ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                  : "bg-white/5 hover:bg-white/10 text-[#e5e1e4] border-white/10"
+              }`}
+              title={isOutputOpen ? "Close Output Panel" : "Open Output Panel"}
             >
-              <span className="material-symbols-outlined text-[18px]">group</span>
+              <span className="material-symbols-outlined text-[18px]">terminal</span>
+              <span className="hidden sm:inline">Output</span>
+              {output && !isOutputOpen && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              )}
+            </button>
+
+            {/* Chat & Users Panel Toggle Button */}
+            <button
+              onClick={() => setIsChatOpen(!isChatOpen)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border text-xs uppercase tracking-wider font-bold transition-all active:scale-95 duration-150 shrink-0 cursor-pointer ${
+                isChatOpen
+                  ? "bg-[#3b82f6]/20 text-[#adc6ff] border-[#3b82f6]/40 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                  : "bg-white/5 hover:bg-white/10 text-[#e5e1e4] border-white/10"
+              }`}
+              title={isChatOpen ? "Close Chat & Users" : "Open Chat & Users"}
+            >
+              <span className="material-symbols-outlined text-[18px]">forum</span>
+              <span className="hidden sm:inline">Chat</span>
             </button>
           </div>
         </header>
 
-        {/* Editor Content */}
-        <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden">
-          {/* Code Canvas */}
-          <section className="flex-1 min-h-[320px] sm:min-h-[420px] lg:min-h-0 flex overflow-hidden bg-[#0a0a0c]">
-            {/* The Monaco Editor */}
-            <div className="flex-1 min-w-0 overflow-hidden relative h-full">
+        {/* Main Workspace Area (Editor + Output + Chat Panel) */}
+        <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative">
+          {/* Code Canvas & Output Panel Container */}
+          <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+            {/* Monaco Code Editor Canvas */}
+            <section className="flex-1 min-h-0 relative overflow-hidden bg-[#0a0a0c]">
               <Editor
                 height="100%"
                 language={language}
@@ -304,167 +337,213 @@ function CollaborativeEditor() {
                   lineHeight: 1.7,
                   padding: { top: 16 },
                   scrollBeyondLastLine: false,
+                  automaticLayout: true,
                 }}
               />
-            </div>
-          </section>
+            </section>
 
-          {/* Code Run Section */}
-          <section className="w-full lg:w-80 shrink-0">
-            <div className="bg-black border-t lg:border-l border-white/10 p-4 overflow-auto min-h-[150px] h-[180px] lg:h-full">
-              <h2 className="text-green-400 text-sm mb-2 uppercase tracking-widest">
-                Output
-              </h2>
-              <pre className="text-white whitespace-pre-wrap text-sm">
-                {output || "Run code to see output"}
-              </pre>
-            </div>
-          </section>
+            {/* Output Console Panel (Collapsible with toggle & auto-opens on Run) */}
+            {isOutputOpen && (
+              <section className="h-48 sm:h-56 lg:h-64 border-t border-white/10 bg-[#08080a] flex flex-col shrink-0 transition-all duration-300">
+                {/* Output Header */}
+                <div className="flex items-center justify-between px-4 py-2 bg-[#121215] border-b border-white/10 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-emerald-400 text-[18px]">terminal</span>
+                    <h2 className="text-xs font-bold uppercase tracking-widest text-emerald-400">
+                      Console Output
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {output && (
+                      <button
+                        onClick={() => setOutput("")}
+                        className="text-[11px] font-semibold text-[#c2c6d6]/60 hover:text-white px-2 py-0.5 rounded hover:bg-white/5 transition-all cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsOutputOpen(false)}
+                      className="flex items-center justify-center p-1 rounded text-[#c2c6d6] hover:text-white hover:bg-white/10 transition-all cursor-pointer"
+                      title="Close Output"
+                    >
+                      <span className="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                  </div>
+                </div>
 
-          {/* Mobile Overlay Backdrop */}
-          {showUsers && (
+                {/* Output Body */}
+                <div className="flex-1 p-4 overflow-auto font-mono text-sm leading-relaxed">
+                  {output ? (
+                    <pre className="text-[#e5e1e4] whitespace-pre-wrap">{output}</pre>
+                  ) : (
+                    <span className="text-[#c2c6d6]/40 italic text-xs">Run code to see output...</span>
+                  )}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Mobile Overlay Backdrop for Chat Drawer */}
+          {isChatOpen && (
             <div
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[55] xl:hidden transition-opacity duration-300"
-              onClick={() => setShowUsers(false)}
+              onClick={() => setIsChatOpen(false)}
             />
           )}
 
-          {/* Users & Chat Sidebar (Responsive slide-over drawer on mobile/tablet) */}
-          <section
-            className={`fixed inset-y-0 right-0 z-[60] w-full sm:w-[350px] bg-[#0c0c0e]/95 backdrop-blur-2xl border-l border-white/10 flex flex-col p-4 gap-4 shadow-2xl transition-all duration-300 xl:relative xl:translate-x-0 xl:w-[300px] xl:bg-[#131315]/90 xl:border-t-0 xl:border-l xl:min-h-0 xl:z-20 ${
-              showUsers ? "translate-x-0 opacity-100" : "translate-x-full opacity-0 pointer-events-none xl:opacity-100 xl:pointer-events-auto"
-            }`}
-          >
-            {/* Tabs & Close button row */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Industry-level Tabs */}
-              <div className="flex-1 flex bg-white/5 p-1 rounded-lg border border-white/5">
-                <button
-                  onClick={() => setActiveTab("users")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-200 ${
-                    activeTab === "users"
-                      ? "bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                      : "text-[#c2c6d6]/60 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">group</span>
-                  Users
-                </button>
-                <button
-                  onClick={() => setActiveTab("chat")}
-                  className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-200 ${
-                    activeTab === "chat"
-                      ? "bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.3)]"
-                      : "text-[#c2c6d6]/60 hover:text-white"
-                  }`}
-                >
-                  <span className="material-symbols-outlined text-[16px]">chat</span>
-                  Chat
-                </button>
-              </div>
-
-              {/* Close Button for Drawer (Mobile Only) */}
-              <button
-                onClick={() => setShowUsers(false)}
-                className="xl:hidden flex items-center justify-center p-2 rounded-lg text-[#adc6ff] hover:text-white hover:bg-white/10 active:scale-95 duration-150 cursor-pointer border border-white/5"
-                aria-label="Close sidebar"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            {/* Users list tab panel */}
-            <div className={`flex-1 flex flex-col gap-2 overflow-y-auto pr-1 min-h-0 ${activeTab === "users" ? "" : "hidden"}`}>
-              <h2 className="text-xs font-bold uppercase tracking-widest text-[#c2c6d6] flex items-center gap-2 mb-2">
-                <span className="material-symbols-outlined text-[18px]">group</span>
-                Users
-              </h2>
-              {users.map((user, index) => (
-                <div key={index} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-xl transition-all hover:bg-white/10">
-                  <div className="relative">
-                    <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-white/10 flex items-center justify-center text-xs font-bold text-[#adc6ff] uppercase">
-                      {user.username.substring(0, 2)}
-                    </div>
-                    <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#2a2a2c]"></span>
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <div className="flex justify-between items-center">
-                      <p className="text-xs uppercase tracking-widest font-bold text-[#e5e1e4] truncate mr-2">{user.username}</p>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold shrink-0">ACTIVE</span>
-                    </div>
-                  </div>
+          {/* Users & Chat Sidebar (Collapsible & Responsive: Drawer on Mobile/Tablet, Right Panel on Desktop) */}
+          {isChatOpen && (
+            <section
+              className="fixed inset-y-0 right-0 z-[60] w-full sm:w-[350px] bg-[#0c0c0e]/95 backdrop-blur-2xl border-l border-white/10 flex flex-col p-4 gap-4 shadow-2xl transition-all duration-300 xl:relative xl:inset-auto xl:z-20 xl:w-[320px] xl:bg-[#131315]/90 xl:shadow-none shrink-0"
+            >
+              {/* Tabs & Close button row */}
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="flex-1 flex bg-white/5 p-1 rounded-lg border border-white/5">
+                  <button
+                    onClick={() => setActiveTab("users")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-200 ${
+                      activeTab === "users"
+                        ? "bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                        : "text-[#c2c6d6]/60 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">group</span>
+                    Users
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("chat")}
+                    className={`flex-1 flex items-center justify-center gap-2 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest cursor-pointer transition-all duration-200 ${
+                      activeTab === "chat"
+                        ? "bg-[#3b82f6] text-white shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                        : "text-[#c2c6d6]/60 hover:text-white"
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">chat</span>
+                    Chat
+                  </button>
                 </div>
-              ))}
-            </div>
 
-            {/* Chat room panel (persists state by staying mounted in the DOM) */}
-            <div className={`flex-1 min-h-0 h-full ${activeTab === "chat" ? "" : "hidden"}`}>
-              <ChatPanel groupCode={groupCode} username={username} currentCode={yText.toString()} language={language} />
-            </div>
-          </section>
-
-
-          </div>
-
-          {/* Bottom Action Bar (Desktop-integrated look) */}
-          <footer className="min-h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 z-50">
-            <div className="flex items-center gap-4 min-w-0">
-              <button
-                onClick={() => {
-                  navigator.clipboard.writeText(groupCode);
-                }}
-                className="flex items-center gap-2 min-w-0 max-w-[46vw] sm:max-w-none px-3 sm:px-4 py-2 sm:py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg"
-              >
-                <span className="material-symbols-outlined text-[18px]">content_copy</span>
-                <span className="text-xs uppercase tracking-widest font-bold truncate">{groupCode}</span>
-              </button>
-            </div>
-            <div className="flex items-center justify-end gap-2 sm:gap-4 min-w-0">
-              <div className="hidden md:flex items-center gap-2 text-[10px] text-[#c2c6d6] uppercase tracking-widest px-4 border-r border-white/10 h-6">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
-                Engine: Connected
+                {/* Close Button for Panel */}
+                <button
+                  onClick={() => setIsChatOpen(false)}
+                  className="flex items-center justify-center p-2 rounded-lg text-[#adc6ff] hover:text-white hover:bg-white/10 active:scale-95 duration-150 cursor-pointer border border-white/5"
+                  aria-label="Close panel"
+                  title="Close Panel"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
               </div>
-              <button
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-1 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all rounded-lg active:scale-95 duration-150"
-                onClick={() => { navigate("/group-lobby") }}
-              >
-                <span className="material-symbols-outlined text-[18px]">logout</span>
-                <span className="hidden min-[420px]:inline text-xs uppercase tracking-widest font-bold">Leave Room</span>
-              </button>
-            </div>
-          </footer>
-        </main>
 
-        {/* Bottom Navigation Bar (Mobile Only) */}
-        <nav className="fixed bottom-0 w-full flex justify-around py-2 px-4 bg-[#131315] z-40 md:hidden border-t border-white/10">
-          <div className="text-[#c2c6d6] hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">bug_report</span>
+              {/* Users list tab panel */}
+              <div className={`flex-1 flex flex-col gap-2 overflow-y-auto pr-1 min-h-0 ${activeTab === "users" ? "" : "hidden"}`}>
+                <h2 className="text-xs font-bold uppercase tracking-widest text-[#c2c6d6] flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-[18px]">group</span>
+                  Users ({users.length})
+                </h2>
+                {users.map((user, index) => (
+                  <div key={index} className="flex items-center gap-4 p-2 bg-white/5 border border-white/10 rounded-xl transition-all hover:bg-white/10">
+                    <div className="relative">
+                      <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-white/10 flex items-center justify-center text-xs font-bold text-[#adc6ff] uppercase">
+                        {user.username ? user.username.substring(0, 2) : "??"}
+                      </div>
+                      <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#2a2a2c]"></span>
+                    </div>
+                    <div className="flex-1 overflow-hidden">
+                      <div className="flex justify-between items-center">
+                        <p className="text-xs uppercase tracking-widest font-bold text-[#e5e1e4] truncate mr-2">{user.username}</p>
+                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold shrink-0">ACTIVE</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Chat room panel */}
+              <div className={`flex-1 min-h-0 h-full ${activeTab === "chat" ? "" : "hidden"}`}>
+                <ChatPanel groupCode={groupCode} username={username} currentCode={yText.toString()} language={language} />
+              </div>
+            </section>
+          )}
+        </div>
+
+        {/* Bottom Action Bar */}
+        <footer className="min-h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 z-50">
+          <div className="flex items-center gap-4 min-w-0">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(groupCode);
+              }}
+              className="flex items-center gap-2 min-w-0 max-w-[46vw] sm:max-w-none px-3 sm:px-4 py-2 sm:py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-[18px]">content_copy</span>
+              <span className="text-xs uppercase tracking-widest font-bold truncate">{groupCode}</span>
+            </button>
           </div>
-          <div className="text-[#c2c6d6] hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">history</span>
+          <div className="flex items-center justify-end gap-2 sm:gap-4 min-w-0">
+            <div className="hidden md:flex items-center gap-2 text-[10px] text-[#c2c6d6] uppercase tracking-widest px-4 border-r border-white/10 h-6">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
+              Engine: Connected
+            </div>
+            <button
+              className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-1 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all rounded-lg active:scale-95 duration-150 cursor-pointer"
+              onClick={() => { navigate("/group-lobby") }}
+            >
+              <span className="material-symbols-outlined text-[18px]">logout</span>
+              <span className="hidden min-[420px]:inline text-xs uppercase tracking-widest font-bold">Leave Room</span>
+            </button>
           </div>
-          <div className="text-[#adc6ff] scale-110 active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">terminal</span>
-          </div>
-          <div 
-            onClick={() => {
-              setShowUsers(true);
-              setActiveTab("chat");
-            }}
-            className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer ${
-              showUsers && activeTab === "chat" ? "text-[#3b82f6] scale-110" : "text-[#c2c6d6]"
-            }`}
-          >
-            <span className="material-symbols-outlined">chat</span>
-          </div>
-          <div className="text-[#c2c6d6] hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer">
-            <span className="material-symbols-outlined">info</span>
-          </div>
-        </nav>
-      </div>
-    )
-  }
+        </footer>
+      </main>
+
+      {/* Bottom Navigation Bar (Mobile Only) */}
+      <nav className="fixed bottom-0 w-full flex justify-around py-2 px-4 bg-[#131315] z-40 md:hidden border-t border-white/10">
+        <div 
+          onClick={() => setIsOutputOpen(!isOutputOpen)}
+          className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
+            isOutputOpen ? "text-emerald-400 scale-110" : "text-[#c2c6d6]"
+          }`}
+          title="Toggle Output"
+        >
+          <span className="material-symbols-outlined">terminal</span>
+        </div>
+        <div 
+          onClick={() => {
+            setIsChatOpen(!isChatOpen);
+            setActiveTab("chat");
+          }}
+          className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
+            isChatOpen && activeTab === "chat" ? "text-[#3b82f6] scale-110" : "text-[#c2c6d6]"
+          }`}
+          title="Toggle Chat"
+        >
+          <span className="material-symbols-outlined">chat</span>
+        </div>
+        <div 
+          onClick={() => {
+            setIsChatOpen(!isChatOpen);
+            setActiveTab("users");
+          }}
+          className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
+            isChatOpen && activeTab === "users" ? "text-[#3b82f6] scale-110" : "text-[#c2c6d6]"
+          }`}
+          title="Toggle Users"
+        >
+          <span className="material-symbols-outlined">group</span>
+        </div>
+        <div 
+          onClick={handleRunCode}
+          className="text-[#3b82f6] hover:text-blue-400 active:scale-90 transition-all cursor-pointer flex flex-col items-center"
+          title="Run Code"
+        >
+          <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>play_arrow</span>
+        </div>
+      </nav>
+    </div>
+  )
+}
 
 export default CollaborativeEditor
+
 
 
