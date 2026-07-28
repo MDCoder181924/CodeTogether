@@ -19,12 +19,13 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false, // Prevents blocking embedded frontend or socket connections in production
+}));
 app.use(morgan('dev'));
 app.use(express.json());
 app.use(passport.initialize());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(cookieParser());
 
 const allowedOrigins = [
@@ -45,10 +46,11 @@ if (process.env.CLIENT_URL) {
 
 app.use(cors({
     origin: (origin, callback) => {
-        if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
-            return callback(null, true);
-        }
-        return callback(null, true);
+        // Allow requests with no origin (mobile apps, server-to-server, curl)
+        if (!origin) return callback(null, true);
+        
+        // Pass the request origin explicitly to support credentials across deployment domains
+        return callback(null, origin);
     },
     credentials: true,
 }));
@@ -62,18 +64,14 @@ if (fs.existsSync(staticPath)) {
     app.use(express.static(staticPath));
 }
 
-app.use("/api/user" , userRouter);
-
+app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
-
-app.use("/api/group" , groupRouter)
-
-app.use('/api/code',codeRoutes)
-
-app.use('/api/chat', chatRouter)
+app.use("/api/group", groupRouter);
+app.use('/api/code', codeRoutes);
+app.use('/api/chat', chatRouter);
 
 if (fs.existsSync(staticPath)) {
-    app.get('*all', (req, res, next) => {
+    app.get('*', (req, res, next) => {
         if (req.path.startsWith('/api')) {
             return next();
         }
@@ -83,8 +81,8 @@ if (fs.existsSync(staticPath)) {
     app.get('/', (req, res) => {
         res.status(200).json({
             success: true,
-            message: "Welcome to CodeTogether API"
-        })
+            message: "Welcome to CodeTogether API Server"
+        });
     });
 }
 

@@ -18,6 +18,9 @@ const Signup = () => {
     try {
       const response = await api.post('/auth/register', { name, email, password });
       console.log(response.data);
+      if (response.data.accesstoken) {
+        localStorage.setItem("token", response.data.accesstoken);
+      }
       localStorage.setItem(
         "user",
         JSON.stringify(response.data.user)
@@ -25,7 +28,16 @@ const Signup = () => {
       navigate('/group-lobby');
     } catch (error) {
       console.error("Signup failed:", error);
-      setErrorMsg(error.response?.data?.message || "Registration failed. Please make sure the email is unique and valid.");
+      const serverMsg = error.response?.data?.message;
+      if (typeof serverMsg === 'string') {
+        setErrorMsg(serverMsg);
+      } else if (error.response?.status === 404) {
+        setErrorMsg("API Endpoint not found. Please verify VITE_API_URL environment variable.");
+      } else if (error.code === "ERR_NETWORK") {
+        setErrorMsg("Cannot connect to server. Please check backend URL and server status.");
+      } else {
+        setErrorMsg("Registration failed. Please make sure the email is unique and valid.");
+      }
     } finally {
       setLoading(false);
     }
