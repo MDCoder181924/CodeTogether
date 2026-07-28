@@ -6,6 +6,7 @@ import api, { getSocketUrl } from "../../services/api"
 import { SocketIOProvider } from 'y-socket.io'
 import { useParams, useNavigate } from "react-router-dom"
 import ChatPanel from "./ChatPanel";
+import SettingsModal, { DEFAULT_SETTINGS } from "./SettingsModal";
 import { io } from "socket.io-client";
 
 const SOCKET_URL = getSocketUrl();
@@ -13,11 +14,12 @@ const SOCKET_URL = getSocketUrl();
 function CollaborativeEditor() {
 
   const navigate = useNavigate();
-
   const { groupCode } = useParams();
 
   const editorRef = useRef(null)
   const socketRef = useRef(null)
+  const providerRef = useRef(null)
+
   const [users, setUsers] = useState([])
   const [language, setLanguage] = useState("javascript");
   const [output, setOutput] = useState("");
@@ -25,15 +27,76 @@ function CollaborativeEditor() {
   const [activeTab, setActiveTab] = useState("users");
   const [isOutputOpen, setIsOutputOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  const currentUser =
-    JSON.parse(localStorage.getItem("user"));
+  // Settings State & Persistence
+  const [settings, setSettings] = useState(() => {
+    try {
+      const saved = localStorage.getItem("codetogether_settings");
+      return saved ? { ...DEFAULT_SETTINGS, ...JSON.parse(saved) } : DEFAULT_SETTINGS;
+    } catch {
+      return DEFAULT_SETTINGS;
+    }
+  });
 
-  const username =
-    currentUser?.name || "Anonymous";
+  // User State & Persistence
+  const [username, setUsername] = useState(() => {
+    try {
+      const u = JSON.parse(localStorage.getItem("user"));
+      return u?.name || "Anonymous";
+    } catch {
+      return "Anonymous";
+    }
+  });
 
   const ydoc = useMemo(() => new Y.Doc(), [])
   const yText = useMemo(() => ydoc.getText("monaco"), [ydoc])
+
+  // Save settings changes to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("codetogether_settings", JSON.stringify(settings));
+    } catch (e) {
+      console.error("Failed to save settings to localStorage", e);
+    }
+  }, [settings]);
+
+  // Dynamic updates for Monaco Editor options when settings change
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.updateOptions({
+        fontSize: settings.fontSize || 14,
+        fontFamily: settings.fontFamily || "'JetBrains Mono', monospace",
+        tabSize: settings.tabSize || 2,
+        wordWrap: settings.wordWrap || 'on',
+        lineNumbers: settings.lineNumbers || 'on',
+        cursorStyle: settings.cursorStyle || 'line',
+        minimap: { enabled: !!settings.minimap },
+        bracketPairColorization: { enabled: settings.bracketPairColorization ?? true },
+      });
+    }
+  }, [settings]);
+
+  // Handler for updating username from Settings
+  const handleUpdateUsername = (newName) => {
+    setUsername(newName);
+    try {
+      const currentUser = JSON.parse(localStorage.getItem("user")) || {};
+      const updatedUser = { ...currentUser, name: newName };
+      localStorage.setItem("user", JSON.stringify(updatedUser));
+    } catch (e) {
+      console.error("Failed to save updated username", e);
+    }
+
+    // Broadcast new username over Yjs awareness if provider is active
+    if (providerRef.current?.awareness) {
+      const currentUser = JSON.parse(localStorage.getItem("user"));
+      providerRef.current.awareness.setLocalStateField("user", {
+        id: currentUser?._id || newName,
+        username: newName,
+      });
+    }
+  };
 
   const updateUsersFromAwareness = (states) => {
     const uniqueUsers = Array.from(
@@ -72,35 +135,28 @@ function CollaborativeEditor() {
   }
 
   useEffect(() => {
-
     setUsers([
       {
         username,
       },
     ]);
-
   }, [username]);
 
   useEffect(() => {
-
-    console.log(username)
-
     if (username) {
-
+      const currentUser = JSON.parse(localStorage.getItem("user"));
       const provider = new SocketIOProvider(SOCKET_URL, groupCode, ydoc, {
         autoConnect: true,
       })
+
+      providerRef.current = provider;
 
       provider.awareness.setLocalStateField("user", {
         id: currentUser?._id || username,
         username,
       })
 
-
       const states = Array.from(provider.awareness.getStates().values())
-
-      console.log(states)
-
       updateUsersFromAwareness(states)
 
       provider.awareness.on("change", () => {
@@ -114,15 +170,13 @@ function CollaborativeEditor() {
 
       window.addEventListener("beforeunload", handleBeforeUnload)
 
-
       return () => {
         provider.disconnect()
+        providerRef.current = null
         window.removeEventListener("beforeunload", handleBeforeUnload)
       }
     }
-  }, [
-    username
-  ])
+  }, [username, groupCode, ydoc])
 
   // Handle room socket operations: loading code history and auto-saving code
   useEffect(() => {
@@ -148,8 +202,10 @@ function CollaborativeEditor() {
     };
   }, [groupCode, yText]);
 
-  // Periodic Auto-save code back to MongoDB
+  // Periodic Auto-save code back to MongoDB (respects autoSave setting)
   useEffect(() => {
+    if (settings.autoSave === false) return;
+
     let lastSavedCode = "";
     const interval = setInterval(() => {
       const currentCode = yText.toString();
@@ -164,14 +220,25 @@ function CollaborativeEditor() {
     }, 4000); // Auto-save every 4 seconds
 
     return () => clearInterval(interval);
-  }, [yText, groupCode, language]);
+  }, [yText, groupCode, language, settings.autoSave]);
 
   return (
     <div className="bg-[#0e0e10] text-[#e5e1e4] font-sans overflow-hidden flex h-[100dvh] w-full">
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        settings={settings}
+        onUpdateSettings={setSettings}
+        username={username}
+        onUpdateUsername={handleUpdateUsername}
+      />
+
       {/* Navigation Drawer (Responsive: Fixed on desktop, Drawer overlay on mobile) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-[260px] bg-[#0c0c0e]/95 md:bg-white/5 backdrop-blur-2xl md:backdrop-blur-md text-[#adc6ff] font-sans flex flex-col py-6 gap-4 border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          }`}
+        className={`fixed top-0 bottom-0 left-0 z-50 w-[260px] bg-[#0c0c0e]/95 md:bg-white/5 backdrop-blur-2xl md:backdrop-blur-md text-[#adc6ff] font-sans flex flex-col py-6 gap-4 border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
       >
         <div className="px-6 mb-8 flex items-center justify-between">
           <h1 className="font-sans text-xs uppercase tracking-widest font-black text-[#e5e1e4] bg-gradient-to-r from-white via-[#adc6ff] to-[#3b82f6] bg-clip-text text-transparent">
@@ -200,32 +267,48 @@ function CollaborativeEditor() {
             onClick={() => {
               setIsChatOpen(true);
               setActiveTab("users");
+              setIsSidebarOpen(false);
             }}
             className="text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5 px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200"
           >
             <span className="material-symbols-outlined text-[20px]">group</span>
             <span className="text-sm font-medium">Collaborators</span>
           </div>
-          <div className="text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5 px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200">
+          <div 
+            onClick={() => {
+              setIsSettingsOpen(true);
+              setIsSidebarOpen(false);
+            }}
+            className={`px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200 ${
+              isSettingsOpen 
+                ? "bg-[#adc6ff]/10 text-[#adc6ff] font-bold" 
+                : "text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5"
+            }`}
+          >
             <span className="material-symbols-outlined text-[20px]">settings</span>
             <span className="text-sm font-medium">Settings</span>
           </div>
         </nav>
 
         <div className="px-4 mt-auto pt-6 border-t border-white/5">
-          <div className="flex items-center gap-4 p-2 bg-white/5 border border-white/5 rounded-xl">
+          <div 
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-4 p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl cursor-pointer transition-all"
+            title="Open Profile Settings"
+          >
             <div className="relative">
               <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-[#3b82f6] to-[#adc6ff] flex items-center justify-center text-xs font-bold text-white uppercase shadow-md">
                 {username.substring(0, 2)}
               </div>
               <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#0e0e10]"></span>
             </div>
-            <div className="overflow-hidden">
+            <div className="overflow-hidden flex-1 min-w-0">
               <p className="text-xs font-bold text-[#e5e1e4] truncate">{username}</p>
               <p className="text-[10px] text-[#adc6ff]/70 font-semibold uppercase tracking-wider truncate">
                 Room: {groupCode}
               </p>
             </div>
+            <span className="material-symbols-outlined text-[16px] text-[#c2c6d6]/40">tune</span>
           </div>
         </div>
       </aside>
@@ -265,7 +348,7 @@ function CollaborativeEditor() {
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
-              className="min-w-0 flex-1 sm:flex-none bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-3 sm:px-4 py-2 rounded-lg outline-none text-sm cursor-pointer"
+              className="min-w-0 flex-1 sm:flex-none bg-[#1c1b1d] border border-white/10 text-[#e5e1e4] px-3 sm:px-4 py-2 rounded-lg outline-none text-sm cursor-pointer hover:border-white/20 transition-all"
             >
               <option value="javascript">JavaScript</option>
               <option value="python">Python</option>
@@ -315,6 +398,20 @@ function CollaborativeEditor() {
               <span className="material-symbols-outlined text-[18px]">forum</span>
               <span className="hidden sm:inline">Chat</span>
             </button>
+
+            {/* Settings Toggle Button in Header */}
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className={`flex items-center justify-center gap-2 px-3 py-2 sm:py-1.5 rounded-lg border text-xs uppercase tracking-wider font-bold transition-all active:scale-95 duration-150 shrink-0 cursor-pointer ${
+                isSettingsOpen
+                  ? "bg-[#3b82f6]/20 text-[#adc6ff] border-[#3b82f6]/40 shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                  : "bg-white/5 hover:bg-white/10 text-[#e5e1e4] border-white/10"
+              }`}
+              title="Open Settings"
+            >
+              <span className="material-symbols-outlined text-[18px]">settings</span>
+              <span className="hidden sm:inline">Settings</span>
+            </button>
           </div>
         </header>
 
@@ -328,13 +425,18 @@ function CollaborativeEditor() {
                 height="100%"
                 language={language}
                 defaultValue="// start coding..."
-                theme="vs-dark"
+                theme={settings.theme || 'vs-dark'}
                 onMount={handleMount}
                 options={{
-                  minimap: { enabled: false },
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 14,
+                  minimap: { enabled: !!settings.minimap },
+                  fontFamily: settings.fontFamily || "'JetBrains Mono', monospace",
+                  fontSize: settings.fontSize || 14,
                   lineHeight: 1.7,
+                  tabSize: settings.tabSize || 2,
+                  wordWrap: settings.wordWrap || 'on',
+                  lineNumbers: settings.lineNumbers || 'on',
+                  cursorStyle: settings.cursorStyle || 'line',
+                  bracketPairColorization: { enabled: settings.bracketPairColorization ?? true },
                   padding: { top: 16 },
                   scrollBeyondLastLine: false,
                   automaticLayout: true,
@@ -449,34 +551,40 @@ function CollaborativeEditor() {
                       </div>
                       <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-[#2a2a2c]"></span>
                     </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex justify-between items-center">
-                        <p className="text-xs uppercase tracking-widest font-bold text-[#e5e1e4] truncate mr-2">{user.username}</p>
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[10px] font-bold shrink-0">ACTIVE</span>
-                      </div>
+                    <div className="overflow-hidden flex-1 min-w-0">
+                      <p className="text-xs font-bold text-[#e5e1e4] truncate">
+                        {user.username} {user.username === username && "(You)"}
+                      </p>
+                      <p className="text-[10px] text-[#adc6ff]/70 font-semibold uppercase tracking-wider">Online</p>
                     </div>
                   </div>
                 ))}
               </div>
 
-              {/* Chat room panel */}
-              <div className={`flex-1 min-h-0 h-full ${activeTab === "chat" ? "" : "hidden"}`}>
-                <ChatPanel groupCode={groupCode} username={username} currentCode={yText.toString()} language={language} />
+              {/* Chat panel component */}
+              <div className={`flex-1 flex flex-col min-h-0 ${activeTab === "chat" ? "" : "hidden"}`}>
+                <ChatPanel socket={socketRef.current} username={username} groupCode={groupCode} />
               </div>
             </section>
           )}
         </div>
 
-        {/* Bottom Action Bar */}
-        <footer className="min-h-14 shrink-0 border-t border-white/10 bg-[#1c1b1d] flex flex-wrap items-center justify-between gap-2 px-4 sm:px-6 py-2 z-50">
+        {/* Status Bar Footer */}
+        <footer className="h-8 min-h-8 px-4 bg-[#08080a] border-t border-white/10 flex items-center justify-between text-[11px] text-[#c2c6d6] shrink-0">
           <div className="flex items-center gap-4 min-w-0">
+            <span className="flex items-center gap-1.5 text-emerald-400 font-semibold truncate">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Syncing
+            </span>
             <button
               onClick={() => {
                 navigator.clipboard.writeText(groupCode);
+                alert("Room Code copied to clipboard!");
               }}
-              className="flex items-center gap-2 min-w-0 max-w-[46vw] sm:max-w-none px-3 sm:px-4 py-2 sm:py-1 text-[#c2c6d6] hover:text-[#e5e1e4] transition-all bg-white/5 hover:bg-white/10 rounded-lg cursor-pointer"
+              className="hidden sm:flex items-center gap-1 hover:text-white transition-colors cursor-pointer min-w-0"
+              title="Click to copy Room Code"
             >
-              <span className="material-symbols-outlined text-[18px]">content_copy</span>
+              <span className="material-symbols-outlined text-[14px]">content_copy</span>
               <span className="text-xs uppercase tracking-widest font-bold truncate">{groupCode}</span>
             </button>
           </div>
@@ -532,6 +640,15 @@ function CollaborativeEditor() {
           <span className="material-symbols-outlined">group</span>
         </div>
         <div 
+          onClick={() => setIsSettingsOpen(true)}
+          className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
+            isSettingsOpen ? "text-[#3b82f6] scale-110" : "text-[#c2c6d6]"
+          }`}
+          title="Toggle Settings"
+        >
+          <span className="material-symbols-outlined">settings</span>
+        </div>
+        <div 
           onClick={handleRunCode}
           className="text-[#3b82f6] hover:text-blue-400 active:scale-90 transition-all cursor-pointer flex flex-col items-center"
           title="Run Code"
@@ -544,6 +661,3 @@ function CollaborativeEditor() {
 }
 
 export default CollaborativeEditor
-
-
-

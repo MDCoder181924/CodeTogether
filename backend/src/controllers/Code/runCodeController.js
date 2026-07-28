@@ -11,6 +11,10 @@ export const runCode = async (req, res) => {
     try {
         const { code, language } = req.body;
 
+        if (!code || typeof code !== "string") {
+            return res.status(400).json({ success: false, message: "No code provided" });
+        }
+
         // Create a unique temporary directory for this execution
         const dirId = crypto.randomBytes(8).toString("hex");
         const tempDir = path.join(os.tmpdir(), "codetogether_temp", dirId);
@@ -22,6 +26,7 @@ export const runCode = async (req, res) => {
         let tempFile = "";
         let command = "";
         let executableName = "";
+        let codeToWrite = code;
 
         // Map languages to their execution commands
         switch (language) {
@@ -33,12 +38,43 @@ export const runCode = async (req, res) => {
                 tempFile = "main.py";
                 command = `python ${tempFile}`;
                 break;
-            case "java":
-                const javaMatch = code.match(/public\s+class\s+([a-zA-Z0-9_]+)/);
-                const className = javaMatch ? javaMatch[1] : "Main";
+            case "java": {
+                // 1. Remove package declarations (e.g. package com.example;) which cause runtime class path mismatch
+                let processedCode = code.replace(/^\s*package\s+[\w.]+;/gm, '// package declaration removed for sandbox execution');
+                let className = "Main";
+
+                // 2. Check if a class definition exists
+                if (!/class\s+[a-zA-Z0-9_]+/.test(processedCode)) {
+                    // Auto-wrap free-standing code/imports into a Main class with main method
+                    const lines = processedCode.split('\n');
+                    const imports = lines.filter(l => l.trim().startsWith('import ')).join('\n');
+                    const body = lines.filter(l => !l.trim().startsWith('import ')).join('\n');
+                    codeToWrite = `${imports}\n\npublic class Main {\n    public static void main(String[] args) {\n${body}\n    }\n}`;
+                    className = "Main";
+                } else {
+                    codeToWrite = processedCode;
+
+                    // Extract actual class name to name the .java file and run target correctly
+                    const publicClassMatch = processedCode.match(/public\s+class\s+([a-zA-Z0-9_]+)/);
+                    if (publicClassMatch) {
+                        className = publicClassMatch[1];
+                    } else {
+                        const classWithMainMatch = processedCode.match(/class\s+([a-zA-Z0-9_]+)\s*\{[\s\S]*?public\s+static\s+void\s+main/);
+                        if (classWithMainMatch) {
+                            className = classWithMainMatch[1];
+                        } else {
+                            const anyClassMatch = processedCode.match(/class\s+([a-zA-Z0-9_]+)/);
+                            if (anyClassMatch) {
+                                className = anyClassMatch[1];
+                            }
+                        }
+                    }
+                }
+
                 tempFile = `${className}.java`;
                 command = `javac ${tempFile} && java ${className}`;
                 break;
+            }
             case "cpp":
                 tempFile = "main.cpp";
                 executableName = process.platform === "win32" ? "main.exe" : "./main";
@@ -58,7 +94,7 @@ export const runCode = async (req, res) => {
         }
 
         const filePath = path.join(tempDir, tempFile);
-        fs.writeFileSync(filePath, code);
+        fs.writeFileSync(filePath, codeToWrite);
 
         try {
             // Execute the code inside the temp directory
