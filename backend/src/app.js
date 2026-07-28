@@ -71,7 +71,8 @@ app.use('/api/code', codeRoutes);
 app.use('/api/chat', chatRouter);
 
 if (fs.existsSync(staticPath)) {
-    app.get('*', (req, res, next) => {
+    // Compatible Express 5 wildcard path syntax (prevents Missing parameter name at index 1: * crash)
+    app.get('{*path}', (req, res, next) => {
         if (req.path.startsWith('/api')) {
             return next();
         }
