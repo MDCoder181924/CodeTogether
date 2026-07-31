@@ -4,6 +4,28 @@ import Message from "../models/Chat/Message.js";
 import Group from "../models/Group/Group.js";
 import { askGemini } from "../services/geminiService.js";
 
+/**
+ * Helper: detect language from file extension
+ */
+const detectLanguage = (fileName) => {
+    const ext = fileName.split('.').pop()?.toLowerCase();
+    const langMap = {
+        'js': 'javascript',
+        'jsx': 'javascript',
+        'ts': 'typescript',
+        'tsx': 'typescript',
+        'py': 'python',
+        'java': 'java',
+        'cpp': 'cpp',
+        'c': 'c',
+        'html': 'html',
+        'css': 'css',
+        'json': 'json',
+        'md': 'markdown',
+    };
+    return langMap[ext] || 'javascript';
+};
+
 export const setupEditorSocket = (server) => {
 
     const allowedOrigins = [
@@ -46,12 +68,29 @@ export const setupEditorSocket = (server) => {
             console.log(`User ${socket.id} joined room: ${roomCode}`);
 
             try {
-                // Fetch group code snapshot and language from MongoDB
                 const group = await Group.findOne({ groupCode: roomCode.trim().toUpperCase() });
-                socket.emit("code-history", {
-                    code: group ? group.currentCode : "",
-                    language: group ? group.language : "javascript"
-                });
+
+                if (group) {
+                    // Auto-migrate legacy groups with no files
+                    if (group.files.length === 0) {
+                        await group.save(); // triggers pre-save hook
+                    }
+
+                    // Send file list to the joining user
+                    socket.emit("file-list", {
+                        files: group.files,
+                    });
+
+                    // Legacy: also send code-history for backward compat
+                    const firstFile = group.files[0];
+                    socket.emit("code-history", {
+                        code: firstFile ? firstFile.code : (group.currentCode || ""),
+                        language: firstFile ? firstFile.language : (group.language || "javascript"),
+                    });
+                } else {
+                    socket.emit("file-list", { files: [] });
+                    socket.emit("code-history", { code: "", language: "javascript" });
+                }
 
                 // Fetch previous messages for this room
                 const messages = await Message.find({ roomCode }).sort({ timestamp: 1 });
@@ -60,6 +99,128 @@ export const setupEditorSocket = (server) => {
                 console.error("Error loading room history:", err);
             }
         });
+
+        // ─── File Operations ─────────────────────────────
+
+        /**
+         * Create a new file in the group
+         * data: { roomCode, fileName, code?, language? }
+         */
+        socket.on("create-file", async (data) => {
+            try {
+                const group = await Group.findOne({ groupCode: data.roomCode.trim().toUpperCase() });
+                if (!group) return;
+
+                // Check for duplicate
+                const exists = group.files.some(
+                    f => f.fileName.toLowerCase() === data.fileName.trim().toLowerCase()
+                );
+                if (exists) {
+                    socket.emit("file-error", { message: "A file with that name already exists" });
+                    return;
+                }
+
+                const detectedLang = data.language || detectLanguage(data.fileName.trim());
+
+                group.files.push({
+                    fileName: data.fileName.trim(),
+                    code: data.code || "",
+                    language: detectedLang,
+                });
+                await group.save();
+
+                const addedFile = group.files[group.files.length - 1];
+
+                // Broadcast to all users in the room
+                io.to(data.roomCode).emit("file-created", {
+                    file: addedFile,
+                });
+            } catch (err) {
+                console.error("Error creating file:", err);
+                socket.emit("file-error", { message: "Failed to create file" });
+            }
+        });
+
+        /**
+         * Rename a file
+         * data: { roomCode, fileId, newFileName }
+         */
+        socket.on("rename-file", async (data) => {
+            try {
+                const group = await Group.findOne({ groupCode: data.roomCode.trim().toUpperCase() });
+                if (!group) return;
+
+                const file = group.files.id(data.fileId);
+                if (!file) {
+                    socket.emit("file-error", { message: "File not found" });
+                    return;
+                }
+
+                // Check for duplicate name
+                const duplicateExists = group.files.some(
+                    f => f._id.toString() !== data.fileId && f.fileName.toLowerCase() === data.newFileName.trim().toLowerCase()
+                );
+                if (duplicateExists) {
+                    socket.emit("file-error", { message: "A file with that name already exists" });
+                    return;
+                }
+
+                const oldFileName = file.fileName;
+                file.fileName = data.newFileName.trim();
+                file.language = detectLanguage(data.newFileName.trim());
+                await group.save();
+
+                // Broadcast to all users in the room
+                io.to(data.roomCode).emit("file-renamed", {
+                    fileId: data.fileId,
+                    oldFileName,
+                    newFileName: file.fileName,
+                    language: file.language,
+                });
+            } catch (err) {
+                console.error("Error renaming file:", err);
+                socket.emit("file-error", { message: "Failed to rename file" });
+            }
+        });
+
+        /**
+         * Delete a file
+         * data: { roomCode, fileId }
+         */
+        socket.on("delete-file", async (data) => {
+            try {
+                const group = await Group.findOne({ groupCode: data.roomCode.trim().toUpperCase() });
+                if (!group) return;
+
+                if (group.files.length <= 1) {
+                    socket.emit("file-error", { message: "Cannot delete the last file" });
+                    return;
+                }
+
+                const file = group.files.id(data.fileId);
+                if (!file) {
+                    socket.emit("file-error", { message: "File not found" });
+                    return;
+                }
+
+                const deletedFileName = file.fileName;
+                const deletedFileId = file._id.toString();
+                group.files.pull(data.fileId);
+                await group.save();
+
+                // Broadcast to all users in the room
+                io.to(data.roomCode).emit("file-deleted", {
+                    fileId: deletedFileId,
+                    fileName: deletedFileName,
+                    remainingFiles: group.files,
+                });
+            } catch (err) {
+                console.error("Error deleting file:", err);
+                socket.emit("file-error", { message: "Failed to delete file" });
+            }
+        });
+
+        // ─── Chat & Code Operations ─────────────────────
 
         socket.on("send-message", async (data) => {
             try {
@@ -145,12 +306,32 @@ export const setupEditorSocket = (server) => {
             }
         });
 
+        /**
+         * Save code for a specific file
+         * data: { roomCode, code, language, fileName? }
+         */
         socket.on("save-code", async (data) => {
             try {
-                await Group.findOneAndUpdate(
-                    { groupCode: data.roomCode.trim().toUpperCase() },
-                    { currentCode: data.code, language: data.language }
-                );
+                const group = await Group.findOne({ groupCode: data.roomCode.trim().toUpperCase() });
+                if (!group) return;
+
+                if (data.fileName) {
+                    // Multi-file mode: save to specific file
+                    const file = group.files.find(
+                        f => f.fileName === data.fileName
+                    );
+                    if (file) {
+                        file.code = data.code;
+                        if (data.language) file.language = data.language;
+                        await group.save();
+                    }
+                } else {
+                    // Legacy single-file mode
+                    await Group.findOneAndUpdate(
+                        { groupCode: data.roomCode.trim().toUpperCase() },
+                        { currentCode: data.code, language: data.language }
+                    );
+                }
             } catch (err) {
                 console.error("Error auto-saving code:", err);
             }

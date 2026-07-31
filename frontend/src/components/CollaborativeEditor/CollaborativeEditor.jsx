@@ -1,15 +1,40 @@
 import { Editor } from '@monaco-editor/react'
 import { MonacoBinding } from 'y-monaco'
-import { useRef, useMemo, useState, useEffect } from 'react'
+import { useRef, useMemo, useState, useEffect, useCallback } from 'react'
 import * as Y from 'yjs'
 import api, { getSocketUrl } from "../../services/api"
 import { SocketIOProvider } from 'y-socket.io'
 import { useParams, useNavigate } from "react-router-dom"
 import ChatPanel from "./ChatPanel";
 import SettingsModal, { DEFAULT_SETTINGS } from "./SettingsModal";
+import FileExplorer from "./FileExplorer";
+import FileTabs from "./FileTabs";
+import NewFileDialog from "./NewFileDialog";
 import { io } from "socket.io-client";
 
 const SOCKET_URL = getSocketUrl();
+
+/**
+ * Detect Monaco editor language from file extension
+ */
+const detectLanguage = (fileName) => {
+  const ext = fileName?.split('.').pop()?.toLowerCase();
+  const langMap = {
+    'js': 'javascript',
+    'jsx': 'javascript',
+    'ts': 'typescript',
+    'tsx': 'typescript',
+    'py': 'python',
+    'java': 'java',
+    'cpp': 'cpp',
+    'c': 'c',
+    'html': 'html',
+    'css': 'css',
+    'json': 'json',
+    'md': 'markdown',
+  };
+  return langMap[ext] || 'javascript';
+};
 
 function CollaborativeEditor() {
 
@@ -19,6 +44,7 @@ function CollaborativeEditor() {
   const editorRef = useRef(null)
   const socketRef = useRef(null)
   const providerRef = useRef(null)
+  const bindingRef = useRef(null)
 
   const [users, setUsers] = useState([])
   const [language, setLanguage] = useState("javascript");
@@ -28,6 +54,18 @@ function CollaborativeEditor() {
   const [isOutputOpen, setIsOutputOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  // Multi-file state
+  const [files, setFiles] = useState([]);
+  const [activeFile, setActiveFile] = useState(null);
+  const [openTabs, setOpenTabs] = useState([]);
+  const [isNewFileDialogOpen, setIsNewFileDialogOpen] = useState(false);
+  const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+
+  // Per-file Yjs documents
+  const ydocsRef = useRef(new Map());
+  const providersRef = useRef(new Map());
 
   // Settings State & Persistence
   const [settings, setSettings] = useState(() => {
@@ -48,9 +86,6 @@ function CollaborativeEditor() {
       return "Anonymous";
     }
   });
-
-  const ydoc = useMemo(() => new Y.Doc(), [])
-  const yText = useMemo(() => ydoc.getText("monaco"), [ydoc])
 
   // Save settings changes to localStorage
   useEffect(() => {
@@ -110,11 +145,167 @@ function CollaborativeEditor() {
     setUsers(uniqueUsers)
   }
 
+  // ─── Per-file Yjs Document Management ─────────────────
+
+  const getOrCreateYDoc = useCallback((fileName) => {
+    if (ydocsRef.current.has(fileName)) {
+      return ydocsRef.current.get(fileName);
+    }
+    const doc = new Y.Doc();
+    ydocsRef.current.set(fileName, doc);
+    return doc;
+  }, []);
+
+  const getOrCreateProvider = useCallback((fileName) => {
+    if (providersRef.current.has(fileName)) {
+      return providersRef.current.get(fileName);
+    }
+
+    const doc = getOrCreateYDoc(fileName);
+    const roomName = `${groupCode}:${fileName}`;
+
+    const provider = new SocketIOProvider(SOCKET_URL, roomName, doc, {
+      autoConnect: true,
+    });
+
+    const currentUser = JSON.parse(localStorage.getItem("user"));
+
+    provider.awareness.setLocalStateField("user", {
+      id: currentUser?._id || username,
+      username,
+    });
+
+    providersRef.current.set(fileName, provider);
+    return provider;
+  }, [groupCode, username, getOrCreateYDoc]);
+
+  const cleanupProvider = useCallback((fileName) => {
+    const provider = providersRef.current.get(fileName);
+    if (provider) {
+      provider.disconnect();
+      providersRef.current.delete(fileName);
+    }
+    const doc = ydocsRef.current.get(fileName);
+    if (doc) {
+      doc.destroy();
+      ydocsRef.current.delete(fileName);
+    }
+  }, []);
+
+  // ─── File Operations ─────────────────────────────────
+
+  const switchToFile = useCallback((file) => {
+    if (!file) return;
+
+    setActiveFile(file);
+    setLanguage(file.language || detectLanguage(file.fileName));
+
+    // Add to open tabs if not already open
+    setOpenTabs(prev => {
+      if (prev.some(t => t._id === file._id)) return prev;
+      return [...prev, file];
+    });
+
+    // Get or create Y doc for this file
+    const doc = getOrCreateYDoc(file.fileName);
+    const yText = doc.getText("monaco");
+
+    // Initialize yText with file code if empty
+    if (yText.toString() === "" && file.code) {
+      yText.insert(0, file.code);
+    }
+
+    // Connect provider for this file
+    const provider = getOrCreateProvider(file.fileName);
+
+    // Store as main provider for awareness
+    providerRef.current = provider;
+
+    // Rebind Monaco editor if it exists
+    if (editorRef.current) {
+      // Clean up old binding
+      if (bindingRef.current) {
+        bindingRef.current.destroy();
+        bindingRef.current = null;
+      }
+
+      // Set the new model content and language
+      const model = editorRef.current.getModel();
+      if (model) {
+        // We need to set the model and rebind
+        const monaco = window.monaco || editorRef.current._domElement?.__monacoEditor;
+
+        // Update language
+        if (window.monaco) {
+          window.monaco.editor.setModelLanguage(model, file.language || detectLanguage(file.fileName));
+        }
+
+        // Create new binding
+        bindingRef.current = new MonacoBinding(
+          yText,
+          model,
+          new Set([editorRef.current]),
+        );
+      }
+    }
+  }, [getOrCreateYDoc, getOrCreateProvider]);
+
+  const handleCreateFile = useCallback(({ fileName, code }) => {
+    if (socketRef.current) {
+      socketRef.current.emit("create-file", {
+        roomCode: groupCode,
+        fileName,
+        code: code || "",
+      });
+    }
+    setIsNewFileDialogOpen(false);
+  }, [groupCode]);
+
+  const handleRenameFile = useCallback((fileId, newFileName) => {
+    if (socketRef.current) {
+      socketRef.current.emit("rename-file", {
+        roomCode: groupCode,
+        fileId,
+        newFileName,
+      });
+    }
+  }, [groupCode]);
+
+  const handleDeleteFile = useCallback((fileId, fileName) => {
+    setDeleteConfirm({ fileId, fileName });
+  }, []);
+
+  const confirmDeleteFile = useCallback(() => {
+    if (!deleteConfirm || !socketRef.current) return;
+
+    socketRef.current.emit("delete-file", {
+      roomCode: groupCode,
+      fileId: deleteConfirm.fileId,
+    });
+
+    setDeleteConfirm(null);
+  }, [groupCode, deleteConfirm]);
+
+  const handleTabClose = useCallback((tab) => {
+    setOpenTabs(prev => {
+      const newTabs = prev.filter(t => t._id !== tab._id);
+
+      // If closing active tab, switch to another
+      if (tab.fileName === activeFile?.fileName && newTabs.length > 0) {
+        const nextFile = newTabs[newTabs.length - 1];
+        // Use setTimeout to avoid state conflicts
+        setTimeout(() => switchToFile(nextFile), 0);
+      }
+
+      return newTabs;
+    });
+  }, [activeFile, switchToFile]);
+
   const handleRunCode = async () => {
     // Automatically open the output panel when code is executed
     setIsOutputOpen(true);
     try {
-      const code = editorRef.current ? editorRef.current.getValue() : yText.toString();
+      const code = editorRef.current ? editorRef.current.getValue() : "";
 
       const response = await api.post('/code/run', { code, language })
       setOutput(response.data.output);
@@ -124,15 +315,24 @@ function CollaborativeEditor() {
     }
   }
 
-  const handleMount = (editor) => {
-    editorRef.current = editor
+  const handleMount = (editor, monaco) => {
+    editorRef.current = editor;
+    window.monaco = monaco;
 
-    new MonacoBinding(
-      yText,
-      editorRef.current.getModel(),
-      new Set([editorRef.current]),
-    )
+    // If we have an active file, bind to its Y doc
+    if (activeFile) {
+      const doc = getOrCreateYDoc(activeFile.fileName);
+      const yText = doc.getText("monaco");
+
+      bindingRef.current = new MonacoBinding(
+        yText,
+        editor.getModel(),
+        new Set([editor]),
+      );
+    }
   }
+
+  // ─── Initial User List ────────────────────────────────
 
   useEffect(() => {
     setUsers([
@@ -142,57 +342,144 @@ function CollaborativeEditor() {
     ]);
   }, [username]);
 
-  useEffect(() => {
-    if (username) {
-      const currentUser = JSON.parse(localStorage.getItem("user"));
-      const provider = new SocketIOProvider(SOCKET_URL, groupCode, ydoc, {
-        autoConnect: true,
-      })
+  // ─── Yjs Awareness for Users ──────────────────────────
 
+  useEffect(() => {
+    if (username && activeFile) {
+      const provider = getOrCreateProvider(activeFile.fileName);
       providerRef.current = provider;
+
+      const currentUser = JSON.parse(localStorage.getItem("user"));
 
       provider.awareness.setLocalStateField("user", {
         id: currentUser?._id || username,
         username,
-      })
+      });
 
-      const states = Array.from(provider.awareness.getStates().values())
-      updateUsersFromAwareness(states)
+      const states = Array.from(provider.awareness.getStates().values());
+      updateUsersFromAwareness(states);
 
       provider.awareness.on("change", () => {
-        const states = Array.from(provider.awareness.getStates().values())
-        updateUsersFromAwareness(states)
-      })
+        const states = Array.from(provider.awareness.getStates().values());
+        updateUsersFromAwareness(states);
+      });
 
       function handleBeforeUnload() {
-        provider.awareness.setLocalStateField("user", null)
+        provider.awareness.setLocalStateField("user", null);
       }
 
-      window.addEventListener("beforeunload", handleBeforeUnload)
+      window.addEventListener("beforeunload", handleBeforeUnload);
 
       return () => {
-        provider.disconnect()
-        providerRef.current = null
-        window.removeEventListener("beforeunload", handleBeforeUnload)
-      }
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+      };
     }
-  }, [username, groupCode, ydoc])
+  }, [username, activeFile, getOrCreateProvider]);
 
-  // Handle room socket operations: loading code history and auto-saving code
+  // ─── Socket: Room Join & File Events ──────────────────
+
   useEffect(() => {
     socketRef.current = io(SOCKET_URL);
 
     // Join room
     socketRef.current.emit("join-room", groupCode);
 
-    // Load saved code history from MongoDB if local Y.Doc text is empty
-    socketRef.current.on("code-history", ({ code, language }) => {
-      if (yText.toString() === "" && code) {
-        yText.insert(0, code);
+    // Receive file list on join
+    socketRef.current.on("file-list", ({ files: fileList }) => {
+      setFiles(fileList);
+
+      // Auto-select the first file if none active
+      if (fileList.length > 0) {
+        const firstFile = fileList[0];
+        setActiveFile(firstFile);
+        setLanguage(firstFile.language || detectLanguage(firstFile.fileName));
+        setOpenTabs([firstFile]);
+
+        // Initialize Y doc for first file
+        const doc = getOrCreateYDoc(firstFile.fileName);
+        const yText = doc.getText("monaco");
+        if (yText.toString() === "" && firstFile.code) {
+          yText.insert(0, firstFile.code);
+        }
       }
-      if (language) {
-        setLanguage(language);
+    });
+
+    // Legacy: also handle code-history for backward compat
+    socketRef.current.on("code-history", ({ code, language: lang }) => {
+      // Only use this if we haven't received file-list yet
+      if (files.length === 0 && activeFile) {
+        const doc = getOrCreateYDoc(activeFile.fileName);
+        const yText = doc.getText("monaco");
+        if (yText.toString() === "" && code) {
+          yText.insert(0, code);
+        }
+        if (lang) setLanguage(lang);
       }
+    });
+
+    // File created by someone in the room
+    socketRef.current.on("file-created", ({ file }) => {
+      setFiles(prev => {
+        if (prev.some(f => f._id === file._id)) return prev;
+        return [...prev, file];
+      });
+    });
+
+    // File renamed
+    socketRef.current.on("file-renamed", ({ fileId, oldFileName, newFileName, language: lang }) => {
+      setFiles(prev => prev.map(f =>
+        f._id === fileId
+          ? { ...f, fileName: newFileName, language: lang }
+          : f
+      ));
+
+      setOpenTabs(prev => prev.map(t =>
+        t._id === fileId
+          ? { ...t, fileName: newFileName, language: lang }
+          : t
+      ));
+
+      setActiveFile(prev => {
+        if (prev?._id === fileId) {
+          return { ...prev, fileName: newFileName, language: lang };
+        }
+        return prev;
+      });
+
+      // Update language if active file was renamed
+      setLanguage(prev => {
+        // Re-check from current state
+        return prev;
+      });
+    });
+
+    // File deleted
+    socketRef.current.on("file-deleted", ({ fileId, fileName: deletedName, remainingFiles }) => {
+      setFiles(remainingFiles);
+
+      setOpenTabs(prev => {
+        const filtered = prev.filter(t => t._id !== fileId);
+        return filtered;
+      });
+
+      // If deleted file was active, switch to first remaining file
+      setActiveFile(prev => {
+        if (prev?._id === fileId && remainingFiles.length > 0) {
+          const nextFile = remainingFiles[0];
+          setTimeout(() => switchToFile(nextFile), 0);
+          return nextFile;
+        }
+        return prev;
+      });
+
+      // Cleanup Yjs resources for deleted file
+      cleanupProvider(deletedName);
+    });
+
+    // File error
+    socketRef.current.on("file-error", ({ message }) => {
+      console.error("File operation error:", message);
+      alert(message);
     });
 
     return () => {
@@ -200,27 +487,52 @@ function CollaborativeEditor() {
         socketRef.current.disconnect();
       }
     };
-  }, [groupCode, yText]);
+  }, [groupCode]);
 
-  // Periodic Auto-save code back to MongoDB (respects autoSave setting)
+  // ─── Periodic Auto-save ───────────────────────────────
+
   useEffect(() => {
-    if (settings.autoSave === false) return;
+    if (settings.autoSave === false || !activeFile) return;
 
     let lastSavedCode = "";
     const interval = setInterval(() => {
+      if (!activeFile || !socketRef.current) return;
+
+      const doc = ydocsRef.current.get(activeFile.fileName);
+      if (!doc) return;
+
+      const yText = doc.getText("monaco");
       const currentCode = yText.toString();
-      if (currentCode && currentCode !== lastSavedCode && socketRef.current) {
+
+      if (currentCode && currentCode !== lastSavedCode) {
         socketRef.current.emit("save-code", {
           roomCode: groupCode,
           code: currentCode,
-          language: language
+          language: language,
+          fileName: activeFile.fileName,
         });
         lastSavedCode = currentCode;
       }
     }, 4000); // Auto-save every 4 seconds
 
     return () => clearInterval(interval);
-  }, [yText, groupCode, language, settings.autoSave]);
+  }, [activeFile, groupCode, language, settings.autoSave]);
+
+  // ─── Cleanup all providers on unmount ──────────────────
+
+  useEffect(() => {
+    return () => {
+      providersRef.current.forEach((provider) => {
+        provider.disconnect();
+      });
+      providersRef.current.clear();
+
+      ydocsRef.current.forEach((doc) => {
+        doc.destroy();
+      });
+      ydocsRef.current.clear();
+    };
+  }, []);
 
   return (
     <div className="bg-[#0e0e10] text-[#e5e1e4] font-sans overflow-hidden flex h-[100dvh] w-full">
@@ -234,13 +546,52 @@ function CollaborativeEditor() {
         onUpdateUsername={handleUpdateUsername}
       />
 
+      {/* New File Dialog */}
+      <NewFileDialog
+        isOpen={isNewFileDialogOpen}
+        onClose={() => setIsNewFileDialogOpen(false)}
+        onSubmit={handleCreateFile}
+        existingFileNames={files.map(f => f.fileName)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[70] p-4">
+          <div className="bg-[#121216] border border-rose-500/30 rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
+            <div className="flex items-center gap-3 text-rose-400 pb-2 border-b border-white/10">
+              <span className="material-symbols-outlined text-xl">warning</span>
+              <h2 className="text-base font-bold text-white">Delete File</h2>
+            </div>
+            <p className="text-xs text-[#c2c6d6] leading-relaxed">
+              Are you sure you want to delete <span className="font-bold text-white font-mono">"{deleteConfirm.fileName}"</span>?
+              This action cannot be undone.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={confirmDeleteFile}
+                className="flex-1 bg-rose-600 hover:bg-rose-700 text-white font-bold py-2.5 rounded-xl shadow-[0_0_12px_rgba(225,29,72,0.4)] active:scale-95 transition-all cursor-pointer text-xs uppercase tracking-widest flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[16px]">delete</span>
+                Delete
+              </button>
+              <button
+                onClick={() => setDeleteConfirm(null)}
+                className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-bold py-2.5 rounded-xl active:scale-95 transition-all cursor-pointer text-xs uppercase tracking-widest"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Navigation Drawer (Responsive: Fixed on desktop, Drawer overlay on mobile) */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-[260px] bg-[#0c0c0e]/95 md:bg-white/5 backdrop-blur-2xl md:backdrop-blur-md text-[#adc6ff] font-sans flex flex-col py-6 gap-4 border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-[260px] bg-[#0c0c0e]/95 md:bg-white/5 backdrop-blur-2xl md:backdrop-blur-md text-[#adc6ff] font-sans flex flex-col py-6 gap-0 border-r border-white/10 transition-transform duration-300 ease-in-out md:translate-x-0 ${
           isSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="px-6 mb-8 flex items-center justify-between">
+        <div className="px-6 mb-4 flex items-center justify-between shrink-0">
           <h1 className="font-sans text-xs uppercase tracking-widest font-black text-[#e5e1e4] bg-gradient-to-r from-white via-[#adc6ff] to-[#3b82f6] bg-clip-text text-transparent">
             CODETOGETHER
           </h1>
@@ -254,14 +605,27 @@ function CollaborativeEditor() {
           </button>
         </div>
 
-        <nav className="flex flex-col gap-1.5 flex-1 px-3">
+        {/* Nav Links */}
+        <nav className="flex flex-col gap-1.5 px-3 shrink-0 mb-2">
           <div className="bg-[#adc6ff]/10 text-[#adc6ff] border-l-4 border-[#adc6ff] px-4 py-2.5 rounded-r-lg flex items-center gap-4 transition-all duration-300">
             <span className="material-symbols-outlined text-[20px]">code</span>
             <span className="text-sm font-bold tracking-wide">Editor</span>
           </div>
-          <div className="text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5 px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200">
+          <div
+            onClick={() => {
+              setIsFileExplorerOpen(!isFileExplorerOpen);
+            }}
+            className={`px-4 py-2.5 rounded-lg flex items-center gap-4 cursor-pointer transition-all duration-200 ${
+              isFileExplorerOpen
+                ? "bg-[#adc6ff]/10 text-[#adc6ff] font-bold"
+                : "text-[#c2c6d6]/60 hover:text-[#adc6ff] hover:bg-white/5"
+            }`}
+          >
             <span className="material-symbols-outlined text-[20px]">folder_open</span>
             <span className="text-sm font-medium">Files</span>
+            <span className="ml-auto px-1.5 py-0.5 rounded-full bg-[#3b82f6]/20 text-[#adc6ff] border border-[#3b82f6]/30 text-[9px] font-bold">
+              {files.length}
+            </span>
           </div>
           <div 
             onClick={() => {
@@ -290,7 +654,25 @@ function CollaborativeEditor() {
           </div>
         </nav>
 
-        <div className="px-4 mt-auto pt-6 border-t border-white/5">
+        {/* File Explorer (Integrated in Sidebar) */}
+        {isFileExplorerOpen && (
+          <div className="flex-1 min-h-0 border-t border-white/10 overflow-hidden">
+            <FileExplorer
+              files={files}
+              activeFileName={activeFile?.fileName}
+              onFileSelect={(file) => {
+                switchToFile(file);
+                setIsSidebarOpen(false);
+              }}
+              onCreateFile={() => setIsNewFileDialogOpen(true)}
+              onRenameFile={handleRenameFile}
+              onDeleteFile={handleDeleteFile}
+            />
+          </div>
+        )}
+
+        {/* User Profile Footer */}
+        <div className="px-4 mt-auto pt-4 border-t border-white/5 shrink-0">
           <div 
             onClick={() => setIsSettingsOpen(true)}
             className="flex items-center gap-4 p-2 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl cursor-pointer transition-all"
@@ -339,7 +721,9 @@ function CollaborativeEditor() {
 
             <span className="material-symbols-outlined text-[#adc6ff]">terminal</span>
             <div className="flex flex-col min-w-0">
-              <span className="text-sm font-bold text-[#adc6ff]">main.js</span>
+              <span className="text-sm font-bold text-[#adc6ff] truncate">
+                {activeFile?.fileName || "main.js"}
+              </span>
               <span className="text-[10px] text-[#c2c6d6] -mt-1">Edited just now</span>
             </div>
           </div>
@@ -356,6 +740,8 @@ function CollaborativeEditor() {
               <option value="cpp">C++</option>
               <option value="typescript">TypeScript</option>
               <option value="c">C</option>
+              <option value="html">HTML</option>
+              <option value="css">CSS</option>
             </select>
 
             {/* Run Code Button */}
@@ -415,10 +801,18 @@ function CollaborativeEditor() {
           </div>
         </header>
 
-        {/* Main Workspace Area (Editor + Output + Chat Panel) */}
+        {/* Main Workspace Area (Tabs + Editor + Output + Chat Panel) */}
         <div className="flex-1 min-h-0 flex flex-row overflow-hidden relative">
           {/* Code Canvas & Output Panel Container */}
           <div className="flex-1 min-w-0 flex flex-col h-full overflow-hidden">
+            {/* File Tabs Bar */}
+            <FileTabs
+              openTabs={openTabs}
+              activeFileName={activeFile?.fileName}
+              onTabSelect={(tab) => switchToFile(tab)}
+              onTabClose={handleTabClose}
+            />
+
             {/* Monaco Code Editor Canvas */}
             <section className="flex-1 min-h-0 relative overflow-hidden bg-[#0a0a0c]">
               <Editor
@@ -589,6 +983,11 @@ function CollaborativeEditor() {
             </button>
           </div>
           <div className="flex items-center justify-end gap-2 sm:gap-4 min-w-0">
+            {/* Active file indicator */}
+            <div className="hidden md:flex items-center gap-2 text-[10px] text-[#c2c6d6] uppercase tracking-widest px-4 border-r border-white/10 h-6">
+              <span className="material-symbols-outlined text-[13px] text-[#adc6ff]">description</span>
+              <span className="truncate max-w-[120px]">{activeFile?.fileName || "main.js"}</span>
+            </div>
             <div className="hidden md:flex items-center gap-2 text-[10px] text-[#c2c6d6] uppercase tracking-widest px-4 border-r border-white/10 h-6">
               <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
               Engine: Connected
@@ -606,6 +1005,18 @@ function CollaborativeEditor() {
 
       {/* Bottom Navigation Bar (Mobile Only) */}
       <nav className="fixed bottom-0 w-full flex justify-around py-2 px-4 bg-[#131315] z-40 md:hidden border-t border-white/10">
+        <div 
+          onClick={() => {
+            setIsFileExplorerOpen(!isFileExplorerOpen);
+            setIsSidebarOpen(true);
+          }}
+          className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
+            isFileExplorerOpen ? "text-[#3b82f6] scale-110" : "text-[#c2c6d6]"
+          }`}
+          title="Toggle Files"
+        >
+          <span className="material-symbols-outlined">folder_open</span>
+        </div>
         <div 
           onClick={() => setIsOutputOpen(!isOutputOpen)}
           className={`hover:text-[#d8e2ff] active:scale-90 transition-all cursor-pointer flex flex-col items-center ${
